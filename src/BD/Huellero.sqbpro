@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="Huellero.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="176"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title=".Browsables" custom_title="0" dock_id="1" table="0,10:Browsables"/><dock_state state="000000ff00000000fd00000001000000020000000000000000fc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000ffffffff0000011800ffffff000000000000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1*">-- =============================================================
+-- ESQUEMA SQLITE PARA EL SISTEMA HUELLERO
+-- Creado a partir del modelo definido en DB_backend.cpp y DB_models.hpp
+-- =============================================================
+
+-- 1. Configuraciones de la Base de Datos
+-- Habilitar la restricción de Claves Foráneas (FK) para asegurar la integridad
+-- de los datos, especialmente para el comportamiento ON DELETE CASCADE.
+PRAGMA foreign_keys = ON;
+
+-- 2. Definición de la tabla Usuarios
+-- Contiene la información básica del usuario (Estudiante, Operador, Admin)
+-- La plantilla de huella se guarda como un BLOB.
+CREATE TABLE IF NOT EXISTS Usuarios (
+    run_id TEXT PRIMARY KEY NOT NULL,
+    dv CHAR(1) NOT NULL,
+    nombre_completo TEXT NOT NULL,
+    -- id_rol: 1=Admin, 2=Operador, 3=Estudiante
+    id_rol INTEGER NOT NULL DEFAULT 3, 
+    password_hash TEXT,
+    -- template_huella: Contiene los datos binarios de la huella dactilar.
+    template_huella BLOB NOT NULL
+);
+
+-- 3. Definición de la tabla DetallesEstudiante
+-- Contiene los datos específicos de un usuario con Rol Estudiante (FK con CASCADE DELETE).
+CREATE TABLE IF NOT EXISTS DetallesEstudiante (
+    run_id TEXT PRIMARY KEY NOT NULL,
+    curso TEXT,
+    -- es_pae: 0=false, 1=true (Indica si tiene beneficio PAE)
+    es_pae INTEGER NOT NULL DEFAULT 0, 
+    FOREIGN KEY (run_id) 
+        REFERENCES Usuarios (run_id) 
+        ON DELETE CASCADE -- Si se elimina un Usuario, se elimina su detalle.
+);
+
+-- 4. Definición de la tabla RegistrosRaciones
+-- Contiene el historial de los servicios de ración entregados.
+CREATE TABLE IF NOT EXISTS RegistrosRaciones (
+    id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_estudiante TEXT NOT NULL,
+    fecha_servicio TEXT NOT NULL,         -- Formato ISO &quot;YYYY-MM-DD&quot;
+    -- tipo_racion: 0=NO_APLICA, 1=Desayuno, 2=Almuerzo
+    tipo_racion INTEGER NOT NULL,       
+    id_terminal TEXT NOT NULL,
+    hora_evento INTEGER NOT NULL,         -- Epoch en milisegundos (ms)
+    -- estado_registro: 0=PENDIENTE, 1=SINCRONIZADO
+    estado_registro INTEGER NOT NULL,     
+    FOREIGN KEY (id_estudiante) 
+        REFERENCES Usuarios (run_id),
+    -- Restricción (RF2): Asegura que un estudiante solo reciba un tipo de ración 
+    -- específico (ej. Desayuno) una vez por día.
+    UNIQUE (id_estudiante, fecha_servicio, tipo_racion) 
+);
+
+-- 5. Definición de la tabla ConfiguracionGlobal
+-- Almacena la configuración única del terminal (CHECK para asegurar que solo exista 1 fila).
+CREATE TABLE IF NOT EXISTS ConfiguracionGlobal (
+    id_unica INTEGER PRIMARY KEY CHECK (id_unica = 1),
+    id_terminal TEXT NOT NULL,
+    -- Restricción CHECK explícita para asegurar que el valor del enum es válido.
+    tipo_racion INTEGER NOT NULL CHECK (tipo_racion IN (0,1,2)),
+    puerto_impresora TEXT NOT NULL DEFAULT 'COM3'
+);
+
+-- 6. Datos Iniciales (SEED)
+-- Inicializa la tabla de configuración, si no existe una fila con id_unica = 1.
+INSERT OR IGNORE INTO ConfiguracionGlobal 
+(id_unica, id_terminal, tipo_racion, puerto_impresora) 
+VALUES (1, 'NUC-01', 0, 'COM3');</sql><current_tab id="0"/></tab_sql></sqlb_project>
