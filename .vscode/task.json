@@ -1,0 +1,39 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compilar Proyecto Huellero",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                
+                "main.cpp",
+                "cpp/*.cpp", 
+                
+                "-o",
+                "bin/programa_huellero.exe",
+
+                "-I",
+                "h",
+                "-I",
+                "libs/include",
+
+                "-L",
+                "libs/x64lib", 
+
+                "-llibzkfp",
+                
+                "-Wall",
+                "-std=c++17" 
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Compila el proyecto completo y guarda el .exe en /bin"
+        }
+    ]
+}
