@@ -62,7 +62,6 @@ struct Usuario {
 struct DetalleEstudiante {
     std::string run_id;   // PK (y FK que apunta a Usuario.run_id)
     std::string curso;    // ej "1bA", "4mB"
-    bool es_pae = false;  // Estado del beneficio (0 o 1)
 }; 
 
 // Corresponde a la tabla 'RegistrosRaciones'
@@ -98,7 +97,6 @@ struct PerfilEstudiante {
     
     // --- De DetalleEstudiante ---
     std::string curso;
-    bool es_pae;
 };
 
 // Un DTO para la Business_Logic al enrolar un nuevo usuario
@@ -106,7 +104,6 @@ struct RequestEnrolarUsuario {
     std::string run_nuevo;
     char dv_nuevo;
     std::string nombre_nuevo;
-    std::string curso_nuevo; // Corregido (era std:: curso_nuevo)
-    bool es_pae;
+    std::string curso_nuevo; 
     std::vector<uint8_t> template_huella;
 };

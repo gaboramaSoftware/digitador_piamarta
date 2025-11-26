@@ -1,77 +1,57 @@
 @echo off
-setlocal ENABLEDELAYEDEXPANSION
-title Build & Run (g++ MinGW)
+cls
+echo ==========================================
+echo   COMPILANDO PROYECTO DIGITADOR
+echo ==========================================
 
-REM --- Ubicaciones base (relativas al .bat) ---
-set "ROOT=%~dp0"
-set "SRC_DIR=%ROOT%cpp"
-set "INC1=%ROOT%h"
-set "INC2=%ROOT%libs\include"
-set "LIBDIR=%ROOT%libs\lib"
-set "OUT_EXE=%ROOT%app.exe"
+cd /d "%~dp0"
 
-REM --- Asegurar g++ en PATH (MSYS2 MinGW64 por defecto) ---
-where g++ >NUL 2>&1
-if errorlevel 1 (
-  set "MINGW_BIN=C:\msys64\mingw64\bin"
-  if exist "%MINGW_BIN%\g++.exe" (
-    set "PATH=%MINGW_BIN%;%PATH%"
-  ) else (
-    echo [ERROR] No se encontro g++. Instala MSYS2 y el toolchain MinGW64, o agrega g++ al PATH.
-    pause
-    exit /b 1
-  )
-)
+rem 1) CONFIGURACION
+set "EXECUTABLE=Digitador.exe"
+set "COMPILER=g++"
 
-REM --- Juntar los .cpp ---
-if not exist "%SRC_DIR%" (
-  echo [ERROR] No existe el directorio de fuentes: %SRC_DIR%
-  pause
-  exit /b 1
-)
+rem Flags:
+set "CFLAGS=-x c -c"
+set "CPPFLAGS=-std=c++17 -Wall -Wextra -Ih -IBD -Ilibs\include"
 
-set "SRC_FILES="
-for %%F in ("%SRC_DIR%\*.cpp") do (
-  set "SRC_FILES=!SRC_FILES! "%%F""
-)
+rem Directorio de la lib ZKFP (VERSION 64 BITS)
+set "ZKFP_LIB=libs\x64lib\libzkfp.lib"
 
-if "!SRC_FILES!"=="" (
-  echo [ERROR] No se encontraron .cpp en %SRC_DIR%
-  pause
-  exit /b 1
-)
-
-REM --- Compilar y enlazar ---
-echo ================= COMPILANDO =================
-echo g++ -std=c++20 -Wall -Wextra -O2 ^
- %SRC_FILES% ^
- -I"%INC1%" -I"%INC2%" -L"%LIBDIR%" -lsqlite3 -o "%OUT_EXE%"
 echo.
-
-g++ -std=c++20 -Wall -Wextra -O2 ^
- %SRC_FILES% ^
- -I"%INC1%" -I"%INC2%" -L"%LIBDIR%" -lsqlite3 -o "%OUT_EXE%"
-
-if errorlevel 1 (
-  echo.
-  echo [FAIL] La compilacion fallo. Revisa los mensajes de arriba.
-  pause
-  exit /b 1
-)
-
-REM --- Copiar sqlite3.dll junto al exe si existe en MinGW64 ---
-if exist "C:\msys64\mingw64\bin\sqlite3.dll" (
-  copy /Y "C:\msys64\mingw64\bin\sqlite3.dll" "%ROOT%" >NUL
+echo [INFO] Verificando libreria ZKFP...
+if not exist "%ZKFP_LIB%" (
+    echo [X] No se encontro "%ZKFP_LIB%"
+    echo     Asegurate de que exista ese archivo y que sea la version de 64 bits.
+    goto build_error
+) else (
+    echo [INFO] Usando libreria ZKFP: %ZKFP_LIB%
 )
 
 echo.
-echo [OK] Compilacion exitosa: "%OUT_EXE%"
-echo =================  EJECUTANDO  =================
-echo.
+echo [1/3] Compilando motor SQLite (C) ...
+%COMPILER% %CFLAGS% BD\sqlite3.c -o BD\sqlite3.o
+if errorlevel 1 goto build_error
 
-"%OUT_EXE%"
-set "RET=%ERRORLEVEL%"
 echo.
-echo [INFO] app.exe retorno codigo %RET%
+echo [2/3] Compilando fuentes C++ ...
+set "SOURCES=main.cpp cpp\*.cpp"
+
+rem OJO: ahora NO usamos -lzkfp, sino la ruta completa al .lib
+%COMPILER% %CPPFLAGS% %SOURCES% BD\sqlite3.o "%ZKFP_LIB%" -o "%EXECUTABLE%"
+if errorlevel 1 goto build_error
+
+echo.
+echo [3/3] Compilacion exitosa.
+echo ------------------------------------------
+echo Ejecutando %EXECUTABLE% ...
+echo ------------------------------------------
+%EXECUTABLE%
 pause
-exit /b %RET%
+goto :eof
+
+:build_error
+echo.
+echo [X] ERROR FATAL EN LA COMPILACION.
+echo     Revisa rutas, includes o funciones nuevas sin implementar.
+pause
+exit /b 1

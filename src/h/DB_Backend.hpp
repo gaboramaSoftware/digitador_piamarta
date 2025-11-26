@@ -91,6 +91,8 @@ public:
     // Elimina un usuario y sus detalles (ON DELETE CASCADE)
     bool Eliminar_Usuario(const std::string& run_id);
 
+    //-- borrar todos los datos --
+    bool borrarTodo();
 
 private:
     // --- Miembros Privados ---
@@ -114,4 +116,5 @@ private:
     // --- Evitar Copias ---
     DB_Backend(const DB_Backend&) = delete;
     DB_Backend& operator=(const DB_Backend&) = delete;
+    
 };

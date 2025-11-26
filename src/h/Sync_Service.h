@@ -5,7 +5,7 @@
 #include <thread>         // Para correr en segundo plano
 #include <mutex>          // Para seguridad entre hilos
 #include <atomic>         // Para detener el hilo de forma segura
-#include "Estructuras.hpp" // Para RegistroRacion, Usuario, etc.
+#include "db_models.hpp" // Para RegistroRacion, Usuario, etc.
 
 // --- DECLARACIONES ANTICIPADAS ---
 class DB_Backend; // Depende de la DB para obtener/guardar datos

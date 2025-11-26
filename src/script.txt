@@ -1,0 +1,12 @@
+SELECT name, sql
+FROM sqlite_master
+WHERE type = 'table';
+
+SELECT 'Contenido -> ' || name AS Tabla
+FROM sqlite_master
+WHERE type='table';
+
+-- Generador de selects (cópialos y ejecútalos)
+SELECT 'SELECT * FROM ' || name || ';'
+FROM sqlite_master
+WHERE type='table';

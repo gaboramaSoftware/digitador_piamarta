@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "Estructuras.hpp"
+#include "db_models.hpp"
 
 // Declaraciones anticipadas
 class Hardware_Manager; 
@@ -43,11 +43,11 @@ private:
         PerfilEstudiante& out_perfil 
     );
 
-    ResultadoSemaforo _evaluar_elegibilidad_racion(const PerfilEstudiante& perfil);
+    EstadoSemaforo _evaluar_elegibilidad_racion(const PerfilEstudiante& perfil);
 
     void _finalizar_transaccion(
         const PerfilEstudiante& perfil, 
-        ResultadoSemaforo resultado 
+        EstadoSemaforo estado 
     );
 
     void _obtener_contexto_actual(

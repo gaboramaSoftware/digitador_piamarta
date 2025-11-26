@@ -68,7 +68,6 @@
         "thread": "cpp",
         "map": "cpp",
         "chrono": "cpp",
-        "iomanip": "cpp",
-        "codecvt": "cpp"
+        "iomanip": "cpp"
     }
 }

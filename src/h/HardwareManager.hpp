@@ -1,67 +1,70 @@
 #pragma once
 
+#include <cstdint>   // std::uint8_t
+#include <memory>    // std::unique_ptr
 #include <string>
 #include <vector>
-#include <memory>         // Para std::unique_ptr
-#include "Estructuras.hpp" // Para Template_Huella, PerfilEstudiante, etc.
+
+#include "DB_models.hpp"  // PerfilEstudiante, RegistroRacion, EstadoSemaforo
 
 // --- DECLARACIONES ANTICIPADAS ---
 
-// 1. Declaración anticipada de la clase de la que dependemos
-class DB_Backend;
+class DB_Backend;   // Clase que maneja la DB
+struct fp_device;   // Tipo opaco del SDK ZKTeco
 
-// 2. Declaración anticipada del struct C del SDK de ZKTeco
-struct fp_device;
+// --- RAII PARA EL DISPOSITIVO ZKTECO ---
 
-// --- GESTOR DE RECURSOS (RAII) PARA EL SDK DE C ---
 struct DevCloser {
-    void operator()(fp_device* d) const; // La implementación (fp_close) va en el .cpp
+    void operator()(fp_device* d) const;  // Implementado en HardwareManager.cpp (fp_close)
 };
 
-// Alias "Modo Pro" para el puntero del dispositivo
 using DevPtr = std::unique_ptr<fp_device, DevCloser>;
 
-
-// --- CLASE HARDWARE MANAGER ---
+// --- CLASE HARDWAREMANAGER ---
 
 class HardwareManager {
 public:
-    // --- Constructor / Destructor (RAII) ---
-    HardwareManager(DB_Backend* db_manager); ~HardwareManager();
+    explicit HardwareManager(DB_Backend* db_manager);
+    ~HardwareManager();
 
-    // --- Inicialización Híbrida (Tu Requerimiento) ---
+    // Inicializa todo el hardware (sensor + impresora)
     bool Inicializar_Dispositivos();
-    // --- Funciones de Operación (Biometría) ---
-    bool CapturarHuellaConReset(std::vector<uint8_t>& out_tpl);
-    // verificar plantilla
-    bool VerificarCoincidencia(const std::vector<uint8_t>& tpl1, const std::vector<uint8_t>& tpl2);
 
+    // Biometría
+    bool CapturarHuella(std::vector<std::uint8_t>& out_tpl);
 
-    // --- Funciones de Operación (Hardware de Salida) ---
-    bool ImprimirTicket(const PerfilEstudiante& perfil, const RegistroRacion& racion);
-    // activar semaforo
-    void ActivarSemáforoGui(ResultadoSemaforo estado, const std::string& mensaje);
+    std::string IdentificarHuellaEnCache(
+        const std::vector<std::uint8_t>& tpl_capturada
+    );
+
+    bool VerificarCoincidencia(
+        const std::vector<std::uint8_t>& tpl1,
+        const std::vector<std::uint8_t>& tpl2
+    );
+
+    // Salida (ticket + “semáforo” lógico para GUI)
+    bool ImprimirTicket(
+        const PerfilEstudiante& perfil,
+        const RegistroRacion&   racion
+    );
+
+    void ActivarSemaforoGui(
+        EstadoSemaforo estado,
+        const std::string& mensaje
+    );
 
 private:
-    // --- Punteros de Dependencia y Hardware ---
-    
-    // El "teléfono" al Archivista (para cargar config)
-    DB_Backend* db_manager_; 
-    // El puntero al SDK de ZKTeco (gestionado por RAII)
-    DevPtr dev_handle_;
-    // --- Configuración Persistente/Descubierta ---
-    std::string idTerminal_;      // Ej: "NUC-01"
-    std::string impresoraPuerto_; // Ej: "COM3" o "/dev/ttyUSB0"
-    bool dispositivosListos_ = false;
+    // Dependencias
+    DB_Backend* db_manager_ = nullptr;
+    DevPtr      dev_handle_;   // Manejador del dispositivo ZKTeco (RAII)
 
-    // --- Métodos Privados (Helpers) ---
-    
-    // Intenta leer la config desde la DB (Paso 1)
-    bool _cargarPersistencia();    
-    // Intenta escanear puertos USB (Paso 2)
-    bool _autodescubrirDispositivos();
-    // Llama a fp_open() y configura el SDK
-    bool _abrirZKTeco();
-    // Se conecta al puerto de la impresora
-    bool _abrirPuertos();
+    // Configuración cargada desde DB
+    std::string idTerminal_;       // Ej: "NUC-01"
+    std::string impresoraPuerto_;  // Ej: "COM3" o "/dev/ttyUSB0"
+    bool        dispositivosListos_ = false;
+
+    // Helpers internos
+    bool _cargarPersistencia();  // Lee ConfiguracionGlobal
+    bool _abrirZKTeco();         // Abre lector + carga caché de huellas
+    bool _abrirPuertos();        // Abre impresora (stub por ahora)
 };
