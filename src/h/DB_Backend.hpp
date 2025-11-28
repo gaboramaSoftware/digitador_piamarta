@@ -2,17 +2,15 @@
 
 #pragma once
 
-#include "DB_models.hpp" // (Paso 1)
+#include "DB_models.hpp" // modelos de base de datos
 #include "Root_Admin.hpp"
 #include "sqlite3.h" // El handle de la librería C
-
 
 #include <map>
 #include <mutex>
 #include <optional> // Para tu API de configuración
 #include <string>
 #include <vector>
-
 
 // Fwd-declare
 struct sqlite3;

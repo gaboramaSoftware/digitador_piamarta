@@ -1,57 +1,52 @@
 @echo off
 cls
 echo ==========================================
-echo   COMPILANDO PROYECTO DIGITADOR
+echo    COMPILANDO PROYECTO DIGITADOR (SRC)
 echo ==========================================
 
-cd /d "%~dp0"
+:: 1. CONFIGURACIÓN
+set EXECUTABLE=Digitador.exe
 
-rem 1) CONFIGURACION
-set "EXECUTABLE=Digitador.exe"
-set "COMPILER=g++"
+:: Rutas
+set INCLUDE_DIRS=-I. -Ih -IBD -Ilibs/include
+set LIB_DIRS=-Llibs/x64lib
+set LIBS=-lzkfp
 
-rem Flags:
-set "CFLAGS=-x c -c"
-set "CPPFLAGS=-std=c++17 -Wall -Wextra -Ih -IBD -Ilibs\include"
-
-rem Directorio de la lib ZKFP (VERSION 64 BITS)
-set "ZKFP_LIB=libs\x64lib\libzkfp.lib"
-
-echo.
-echo [INFO] Verificando libreria ZKFP...
-if not exist "%ZKFP_LIB%" (
-    echo [X] No se encontro "%ZKFP_LIB%"
-    echo     Asegurate de que exista ese archivo y que sea la version de 64 bits.
-    goto build_error
-) else (
-    echo [INFO] Usando libreria ZKFP: %ZKFP_LIB%
+:: 2. PASO CRÍTICO: COMPILAR SQLITE CON GCC (C)
+:: SQLite es código C, no C++. Si lo compilas con g++, explota.
+:: Lo compilamos primero a un archivo objeto (.o)
+echo [1/2] Compilando nucleo SQLite (C)...
+gcc -c BD/sqlite3.c -o BD/sqlite3.o
+if %errorlevel% neq 0 (
+    echo [X] Error compilando SQLite.
+    pause
+    exit /b %errorlevel%
 )
 
-echo.
-echo [1/3] Compilando motor SQLite (C) ...
-%COMPILER% %CFLAGS% BD\sqlite3.c -o BD\sqlite3.o
-if errorlevel 1 goto build_error
+:: 3. COMPILAR TU PROYECTO CON G++ (C++) Y LINKEAR SQLITE
+:: Aqui listamos tus archivos .cpp
+set CPP_SOURCES=main.cpp cpp/DB_Backend.cpp cpp/Sensor.cpp cpp/HardwareManager.cpp cpp/TemplateManager.cpp
+
+:: Banderas de C++ (Tus flags originales)
+set CPP_FLAGS=-std=c++17 -pthread -static-libgcc -static-libstdc++
+
+echo [2/2] Compilando logica de Negocio (C++)...
+:: Nota como agregamos "BD/sqlite3.o" al comando final
+g++ %CPP_SOURCES% BD/sqlite3.o %INCLUDE_DIRS% %LIB_DIRS% %LIBS% %CPP_FLAGS% -o %EXECUTABLE%
+
+:: 4. VERIFICACIÓN FINAL
+if %errorlevel% neq 0 (
+    echo.
+    echo [X] ERROR FATAL EN LA COMPILACION DEL PROYECTO.
+    pause
+    exit /b %errorlevel%
+)
+
+:: Limpieza opcional (borrar el objeto temporal de sqlite)
+:: del BD\sqlite3.o 
 
 echo.
-echo [2/3] Compilando fuentes C++ ...
-set "SOURCES=main.cpp cpp\*.cpp"
-
-rem OJO: ahora NO usamos -lzkfp, sino la ruta completa al .lib
-%COMPILER% %CPPFLAGS% %SOURCES% BD\sqlite3.o "%ZKFP_LIB%" -o "%EXECUTABLE%"
-if errorlevel 1 goto build_error
-
-echo.
-echo [3/3] Compilacion exitosa.
-echo ------------------------------------------
-echo Ejecutando %EXECUTABLE% ...
+echo [OK] Exito. Ejecutando programa...
 echo ------------------------------------------
 %EXECUTABLE%
 pause
-goto :eof
-
-:build_error
-echo.
-echo [X] ERROR FATAL EN LA COMPILACION.
-echo     Revisa rutas, includes o funciones nuevas sin implementar.
-pause
-exit /b 1

@@ -1,0 +1,64 @@
+# ==========================================
+# GITIGNORE PARA PROYECTO DIGITADOR
+# ==========================================
+
+# --- SECRETOS (CRÍTICO) ---
+.env
+.env.local
+.env.*.local
+
+# --- Compilados de C/C++ ---
+# No queremos subir archivos objeto ni ejecutables temporales
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Excepción: DLLs de terceros en libs/ (descomenta si las necesitas)
+# !libs/bin/*.dll
+# !libs/x64lib/*.dll
+
+# --- Carpetas de Salida ---
+# Aquí es donde cae tu ejecutable final y los objetos intermedios
+bin/
+build/
+out/
+dist/
+
+# --- Base de Datos Local (IMPORTANTE) ---
+# Ignorar la DB de desarrollo/pruebas
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Pero SI queremos la carpeta BD/ con el código de SQLite
+!BD/
+!src/BD/
+
+# --- IDEs y Sistema Operativo ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Node.js / Electron (Futuro) ---
+node_modules/
+npm-debug.log
+yarn-error.log
+dist-electron/
+release/
+
+# --- Archivos temporales de Windows ---
+*.tmp
+*.temp
+*.log
+~$*
+
+# --- Archivos de usuario específicos ---
+# Configuraciones locales que cada dev puede tener diferentes
+config.local.json
