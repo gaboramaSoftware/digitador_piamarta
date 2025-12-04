@@ -388,8 +388,42 @@ void menuProcessTicket(Sensor &sensor, DB_Backend &db) {
 
   std::string fecha = getTodayISODate();
 
+  // 3) Determine Ration Type based on Time
+  auto now_tp = std::chrono::system_clock::now();
+  auto now_time_t = std::chrono::system_clock::to_time_t(now_tp);
+  std::tm local_tm{};
+#ifdef _WIN32
+  localtime_s(&local_tm, &now_time_t);
+#else
+  local_tm = *std::localtime(&now_time_t);
+#endif
+  int hour = local_tm.tm_hour;
+
+  TipoRacion tipoRacion = TipoRacion::RACION_NO_APLICA;
+  std::string rationName = "Desconocido";
+
+  if (hour >= 8 && hour < 12) {
+    tipoRacion = TipoRacion::Desayuno;
+    rationName = "Desayuno";
+  } else if (hour >= 12) {
+    tipoRacion = TipoRacion::Almuerzo;
+    rationName = "Almuerzo";
+  } else {
+    // Outside of service hours
+    std::cerr << "(-) Registro rechazado: fuera del horario de servicio (hora "
+                 "actual: "
+              << hour << ":xx).\n";
+    system("PAUSE");
+    return;
+  }
+
+  // Debug output
+  std::cout << "[DEBUG] Current hour: " << hour
+            << " | Ration: " << (int)tipoRacion << " | Name: " << rationName
+            << "\n";
+
   // 3) Verificar doble ración
-  if (db.Verificar_Racion_Doble(run, fecha, cfg.tipo_racion)) {
+  if (db.Verificar_Racion_Doble(run, fecha, tipoRacion)) {
     std::cerr << "(-) Registro rechazado: el estudiante ya recibió esta ración "
                  "hoy.\n";
     system("PAUSE");
@@ -400,7 +434,7 @@ void menuProcessTicket(Sensor &sensor, DB_Backend &db) {
   RegistroRacion reg;
   reg.id_estudiante = run;
   reg.fecha_servicio = fecha;
-  reg.tipo_racion = cfg.tipo_racion;
+  reg.tipo_racion = tipoRacion;
   reg.id_terminal = cfg.id_terminal;
   reg.hora_evento = getNowEpochMs();
   reg.estado_registro = EstadoRegistro::PENDIENTE;
@@ -419,10 +453,66 @@ void menuProcessTicket(Sensor &sensor, DB_Backend &db) {
   std::cout << "  Curso : " << perfil.curso << "\n";
   std::cout << "  Fecha : " << fecha << "\n";
   std::cout << "  Ración: "
-            << (cfg.tipo_racion == TipoRacion::Desayuno   ? "Desayuno"
+            << (tipoRacion == TipoRacion::Desayuno        ? "Desayuno"
                 : cfg.tipo_racion == TipoRacion::Almuerzo ? "Almuerzo"
                                                           : "N/A")
             << "\n";
   std::cout << "###############################################\n";
+  system("PAUSE");
+}
+
+// -----------------------------------------------------------------------------
+// Mostrar registros recientes
+// -----------------------------------------------------------------------------
+
+void menuShowRecent(DB_Backend &db) {
+  std::cout << "\n[REGISTROS RECIENTES] Mostrando últimos 10 registros\n";
+  std::cout << "================================================\n";
+
+  // Obtener los últimos 10 registros
+  std::vector<RegistroRacion> registros = db.Obtener_Ultimos_Registros(10);
+
+  if (registros.empty()) {
+    std::cout << "No hay registros en la base de datos.\n";
+    system("PAUSE");
+    return;
+  }
+
+  // Mapeo de TipoRacion a string para mostrar
+  auto tipoRacionToString = [](TipoRacion tipo) -> std::string {
+    switch (tipo) {
+    case TipoRacion::Desayuno:
+      return "Desayuno";
+    case TipoRacion::Almuerzo:
+      return "Almuerzo";
+    case TipoRacion::RACION_NO_APLICA:
+      return "N/A";
+    default:
+      return "Desconocido";
+    }
+  };
+
+  // Mostrar encabezado
+  std::cout << std::left << std::setw(5) << "ID" << " | " << std::setw(12)
+            << "RUN" << " | " << std::setw(12) << "Fecha" << " | "
+            << std::setw(10) << "Ración" << " | " << std::setw(8) << "Terminal"
+            << " | " << std::setw(12) << "Estado" << "\n";
+  std::cout << std::string(80, '-') << "\n";
+
+  // Mostrar cada registro
+  for (const auto &reg : registros) {
+    std::string estadoStr =
+        (reg.estado_registro == EstadoRegistro::SINCRONIZADO) ? "SINCRONIZADO"
+                                                              : "PENDIENTE";
+
+    std::cout << std::left << std::setw(5) << reg.id_registro << " | "
+              << std::setw(12) << reg.id_estudiante << " | " << std::setw(12)
+              << reg.fecha_servicio << " | " << std::setw(10)
+              << tipoRacionToString(reg.tipo_racion) << " | " << std::setw(8)
+              << reg.id_terminal << " | " << std::setw(12) << estadoStr << "\n";
+  }
+
+  std::cout << "================================================\n";
+  std::cout << "Total de registros mostrados: " << registros.size() << "\n";
   system("PAUSE");
 }

@@ -1,0 +1,17 @@
+{
+  "name": "digitador",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
+    "electron": "^39.2.4"
+  }
+}

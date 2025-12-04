@@ -57,14 +57,16 @@ public:
                               const std::string &fecha_iso, // "YYYY-MM-DD"
                               TipoRacion racion);
 
-  // Guarda un nuevo registro de ración en la DB.
-  // El 'estado_registro' por defecto es PENDIENTE.
+  // Guarda un registro de ración en la base de datos
   bool Guardar_Registro_Racion(const RegistroRacion &registro);
 
   // --- 5. API de Sincronización (El Servicio de Sync) ---
 
   // Obtiene todos los registros con estado = PENDIENTE.
   std::vector<RegistroRacion> Obtener_Registros_Pendientes();
+
+  // Obtiene los ultimos N registros (para UI)
+  std::vector<RegistroRacion> Obtener_Ultimos_Registros(int limite);
 
   // Marca una lista de registros (por ID) como SINCRONIZADO.
   bool Marcar_Registros_Sincronizados(

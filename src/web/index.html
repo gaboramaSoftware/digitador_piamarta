@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Digitador Piamarta</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h2>Digitador</h2>
+                <span>Admin Panel</span>
+            </div>
+            <nav>
+                <a href="#" class="active" onclick="showSection('dashboard')">
+                    <span class="icon">📊</span> Dashboard
+                </a>
+                <a href="#" onclick="showSection('students')">
+                    <span class="icon">👥</span> Estudiantes
+                </a>
+                <a href="#" onclick="showSection('reports')">
+                    <span class="icon">📄</span> Reportes
+                </a>
+                <a href="#" onclick="showSection('settings')">
+                    <span class="icon">⚙️</span> Configuración
+                </a>
+            </nav>
+            <div class="status-box">
+                <div class="status-indicator online"></div>
+                <span>Sistema Online</span>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header>
+                <div class="header-title">
+                    <h1 id="page-title">Dashboard</h1>
+                    <span class="date-display" id="current-date">Cargando fecha...</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-refresh" onclick="refreshData()">
+                        <span class="icon">🔄</span> Actualizar
+                    </button>
+                    <div class="user-profile">
+                        <span>Admin</span>
+                        <div class="avatar">A</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <div id="dashboard" class="section active">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="card stat-card">
+                        <div class="stat-icon breakfast">☕</div>
+                        <div class="stat-info">
+                            <h3>Desayunos</h3>
+                            <p class="stat-value" id="count-breakfast">0</p>
+                            <span class="stat-label">Hoy</span>
+                        </div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon lunch">🍽️</div>
+                        <div class="stat-info">
+                            <h3>Almuerzos</h3>
+                            <p class="stat-value" id="count-lunch">0</p>
+                            <span class="stat-label">Hoy</span>
+                        </div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon total">📝</div>
+                        <div class="stat-info">
+                            <h3>Total Raciones</h3>
+                            <p class="stat-value" id="count-total">0</p>
+                            <span class="stat-label">Hoy</span>
+                        </div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon terminal">🖥️</div>
+                        <div class="stat-info">
+                            <h3>Terminales</h3>
+                            <p class="stat-value">1</p>
+                            <span class="stat-label">Activos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Table -->
+                <div class="card table-card">
+                    <div class="card-header">
+                        <h3>Registros Recientes</h3>
+                        <div class="search-box">
+                            <input type="text" id="search-input" placeholder="Buscar por nombre o RUN..."
+                                onkeyup="filterTable()">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Estudiante</th>
+                                    <th>Curso</th>
+                                    <th>Ración</th>
+                                    <th>Hora</th>
+                                    <th>Terminal</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-body">
+                                <tr>
+                                    <td colspan="7" class="text-center">Cargando datos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other sections placeholders -->
+            <div id="students" class="section">
+                <div class="card">
+                    <h2>Gestión de Estudiantes</h2>
+                    <p>Próximamente...</p>
+                </div>
+            </div>
+            <div id="reports" class="section">
+                <div class="card">
+                    <h2>Reportes</h2>
+                    <p>Próximamente...</p>
+                </div>
+            </div>
+            <div id="settings" class="section">
+                <div class="card">
+                    <h2>Configuración</h2>
+                    <p>Próximamente...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

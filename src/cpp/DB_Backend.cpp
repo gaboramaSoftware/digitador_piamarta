@@ -407,7 +407,6 @@ bool DB_Backend::Guardar_Registro_Racion(const RegistroRacion &registro) {
 
 // --- 5. API de Sincronización (El Servicio de Sync) ---
 
-// AQUI ESTABA EL TODO - AHORA IMPLEMENTADO
 std::vector<RegistroRacion> DB_Backend::Obtener_Registros_Pendientes() {
   std::lock_guard<std::mutex> lock(db_mutex_);
   std::vector<RegistroRacion> lista;
@@ -452,7 +451,55 @@ std::vector<RegistroRacion> DB_Backend::Obtener_Registros_Pendientes() {
   return lista;
 }
 
-// AQUI ESTABA EL TODO - AHORA IMPLEMENTADO
+std::vector<RegistroRacion> DB_Backend::Obtener_Ultimos_Registros(int limite) {
+  std::lock_guard<std::mutex> lock(db_mutex_);
+  std::vector<RegistroRacion> lista;
+
+  const char *sql =
+      "SELECT id_registro, id_estudiante, fecha_servicio, tipo_racion, "
+      "id_terminal, hora_evento, estado_registro "
+      "FROM RegistrosRaciones "
+      "ORDER BY id_registro DESC "
+      "LIMIT ?1;";
+
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+    std::cerr << "[DB_Backend] ERROR prepare Obtener_Ultimos_Registros: "
+              << sqlite3_errmsg(db_handle_) << "\n";
+    return lista;
+  }
+
+  sqlite3_bind_int(stmt, 1, limite);
+
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    RegistroRacion r;
+    r.id_registro = sqlite3_column_int64(stmt, 0);
+
+    const unsigned char *txt_est = sqlite3_column_text(stmt, 1);
+    r.id_estudiante = txt_est ? reinterpret_cast<const char *>(txt_est) : "";
+
+    const unsigned char *txt_fecha = sqlite3_column_text(stmt, 2);
+    r.fecha_servicio =
+        txt_fecha ? reinterpret_cast<const char *>(txt_fecha) : "";
+
+    int tipo = sqlite3_column_int(stmt, 3);
+    r.tipo_racion = to_tipo_racion(tipo).value_or(TipoRacion::RACION_NO_APLICA);
+
+    const unsigned char *txt_term = sqlite3_column_text(stmt, 4);
+    r.id_terminal = txt_term ? reinterpret_cast<const char *>(txt_term) : "";
+
+    r.hora_evento = sqlite3_column_int64(stmt, 5);
+    int estado_int = sqlite3_column_int(stmt, 6);
+    r.estado_registro = (estado_int == 1) ? EstadoRegistro::SINCRONIZADO
+                                          : EstadoRegistro::PENDIENTE;
+
+    lista.push_back(r);
+  }
+
+  sqlite3_finalize(stmt);
+  return lista;
+}
+
 bool DB_Backend::Marcar_Registros_Sincronizados(
     const std::vector<std::int64_t> &ids_registros) {
   std::lock_guard<std::mutex> lock(db_mutex_);
@@ -603,8 +650,8 @@ bool DB_Backend::borrarTodo() {
                           "DELETE FROM DetallesEstudiante;"
                           "DELETE FROM Usuarios;";
 
-  std::cout
-      << "[DB_Backend][QA] Borrando todos los datos de tablas principales...\n";
+  std::cout << "[DB_Backend][QA] Borrando todos los datos de tablas "
+               "principales...\n";
   return _ejecutar_sql_script(sql_clear);
 }
 

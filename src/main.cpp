@@ -1,8 +1,11 @@
+#include "CrowServer.hpp"
 #include "DB_Backend.hpp"
 #include "Sensor.h"
 #include "TemplateManager.hpp"
 #include <iostream>
 #include <stdlib.h>
+#include <string.h>
+
 
 void printMenu() {
   std::cout << "\n========= MENU HUELLERO DIGITADOR PIAMARTA =========\n";
@@ -11,15 +14,29 @@ void printMenu() {
   std::cout << "3) Procesar ticket\n";
   std::cout << "4) Salir\n";
   std::cout << "5) Borrar todos los datos\n";
+  std::cout << "6) Ver ultimos registros\n";
+  std::cout << "7) Iniciar Servidor Web (Test)\n";
   std::cout << "Seleccione una opción: ";
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+  // Check for webserver mode
+  bool webserverMode = false;
+  if (argc > 1 && strcmp(argv[1], "--webserver") == 0) {
+    webserverMode = true;
+  }
+
   // Ruta de la base de datos (ajusta si usas otra)
   DB_Backend db("BD/digitador.db");
   if (!db.Inicializar_DB()) {
     std::cerr << "(-) No se pudo inicializar la base de datos.\n";
     return 1;
+  }
+
+  // If webserver mode, skip sensor initialization and go straight to server
+  if (webserverMode) {
+    runWebServer(db);
+    return 0;
   }
 
   Sensor sensor;
@@ -56,6 +73,14 @@ int main() {
       break;
     case 5:
       db.borrarTodo();
+      break;
+    case 6:
+      menuShowRecent(db);
+      system("CLS");
+      break;
+    case 7:
+      runWebServer(db);
+      system("CLS");
       break;
     default:
       std::cout << "Opción inválida. Intente nuevamente.\n";
