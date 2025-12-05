@@ -1,5 +1,3 @@
-// h/DB_Backend.hpp
-
 #pragma once
 
 #include "DB_models.hpp" // modelos de base de datos
@@ -82,6 +80,19 @@ public:
 
   //-- borrar todos los datos --
   bool borrarTodo();
+
+  // --- 7. API de Estadísticas y Reportes ---
+
+  // Obtiene estadísticas del día actual
+  struct EstadisticasHoy {
+    int count_desayunos;
+    int count_almuerzos;
+    int count_total;
+  };
+  EstadisticasHoy Obtener_Estadisticas_Hoy();
+
+  // Obtiene todos los estudiantes
+  std::vector<PerfilEstudiante> Obtener_Todos_Estudiantes();
 
 private:
   // --- Miembros Privados ---

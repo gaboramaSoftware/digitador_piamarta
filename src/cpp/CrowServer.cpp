@@ -1,4 +1,5 @@
 #include "CrowServer.hpp"
+#include "Endpoints.hpp"
 #include "crow_all.h"
 #include <iostream>
 #include <vector>
@@ -10,28 +11,30 @@ void runWebServer(DB_Backend &db) {
   CROW_ROUTE(app, "/")
   ([]() {
     crow::response res;
-    res.set_static_file_info("src/web/index.html");
+    res.set_static_file_info("web/index.html");
     return res;
   });
 
   CROW_ROUTE(app, "/admin")
   ([]() {
     crow::response res;
-    res.set_static_file_info("src/web/index.html");
+    res.set_static_file_info("web/index.html");
     return res;
   });
 
   CROW_ROUTE(app, "/style.css")
   ([]() {
     crow::response res;
-    res.set_static_file_info("src/web/style.css");
+    res.set_static_file_info("web/style.css");
+    res.set_header("Content-Type", "text/css");
     return res;
   });
 
   CROW_ROUTE(app, "/app.js")
   ([]() {
     crow::response res;
-    res.set_static_file_info("src/web/app.js");
+    res.set_static_file_info("web/app.js");
+    res.set_header("Content-Type", "application/javascript");
     return res;
   });
 
@@ -71,6 +74,34 @@ void runWebServer(DB_Backend &db) {
       records.push_back(std::move(record));
     }
     result["records"] = std::move(records);
+    return result;
+  });
+
+  // Endpoint for Dashboard Stats
+  CROW_ROUTE(app, "/api/stats")
+  ([&db]() {
+    auto stats = GetTodayStats(db);
+    crow::json::wvalue result;
+    result["desayunos"] = stats.count_desayunos;
+    result["almuerzos"] = stats.count_almuerzos;
+    result["total"] = stats.count_totales;
+    return result;
+  });
+
+  // Endpoint for Students List
+  CROW_ROUTE(app, "/api/students")
+  ([&db]() {
+    auto students = GetAllStudents(db);
+    std::vector<crow::json::wvalue> list;
+    for (const auto &s : students) {
+      crow::json::wvalue student;
+      student["run"] = s.run_id;
+      student["nombre"] = s.nombre_completo;
+      student["curso"] = s.curso;
+      list.push_back(std::move(student));
+    }
+    crow::json::wvalue result;
+    result = std::move(list);
     return result;
   });
 

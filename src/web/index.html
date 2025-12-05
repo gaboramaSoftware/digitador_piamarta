@@ -97,9 +97,14 @@
                 <div class="card table-card">
                     <div class="card-header">
                         <h3>Registros Recientes</h3>
-                        <div class="search-box">
-                            <input type="text" id="search-input" placeholder="Buscar por nombre o RUN..."
-                                onkeyup="filterTable()">
+                        <div class="card-actions">
+                            <div class="exportar">
+                                <button class="btn-exportar" onclick="exportToExcel()">Exportar a Excel</button>
+                            </div>
+                            <div class="search-box">
+                                <input type="text" id="search-input" placeholder="Buscar por nombre o RUN..."
+                                    onkeyup="filterTable()">
+                            </div>
                         </div>
                     </div>
                     <div class="table-responsive">
@@ -125,11 +130,38 @@
                 </div>
             </div>
 
-            <!-- Other sections placeholders -->
             <div id="students" class="section">
-                <div class="card">
-                    <h2>Gestión de Estudiantes</h2>
-                    <p>Próximamente...</p>
+                <div class="card table-card">
+                    <div class="card-header">
+                        <h3>Gestión de Estudiantes</h3>
+                        <div class="card-actions">
+                            <div class="exportar">
+                                <button class="btn-exportar" onclick="exportStudentsToExcel()">Exportar a Excel</button>
+                            </div>
+                            <div class="search-box">
+                                <input type="text" id="search-students-input" placeholder="Buscar por nombre o RUN..."
+                                    onkeyup="filterStudentsTable()">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>RUN</th>
+                                    <th>Nombre</th>
+                                    <th>Curso</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="students-body">
+                                <tr>
+                                    <td colspan="5" class="text-center">Cargando datos de estudiantes...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             <div id="reports" class="section">

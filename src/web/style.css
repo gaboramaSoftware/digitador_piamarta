@@ -1,14 +1,20 @@
 :root {
-    --primary: #4f46e5;
-    --primary-dark: #4338ca;
+    /* --- BRAND COLORS (Piamarta) --- */
+    --primary: #2A3B85;
+    --primary-dark: #13246d;
+    --uniform-grey: #4A5568;
+
+    /* --- KPI COLORS --- */
     --secondary: #10b981;
-    --bg-dark: #111827;
-    --bg-card: #1f2937;
-    --text-main: #f9fafb;
-    --text-muted: #9ca3af;
-    --border: #374151;
     --danger: #ef4444;
     --warning: #f59e0b;
+
+    /* --- UI COLORS --- */
+    --bg-dark: #f3f4f6;
+    --bg-card: #ffffff;
+    --text-main: #111827;
+    --text-muted: #6B7280;
+    --border: #002877;
 }
 
 * {
@@ -33,7 +39,7 @@ body {
 /* Sidebar */
 .sidebar {
     width: 260px;
-    background-color: var(--bg-card);
+    background-color: var(--primary-dark);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
@@ -47,13 +53,14 @@ body {
 }
 
 .logo h2 {
-    color: var(--primary);
+    color: #fff;
     font-weight: 700;
     font-size: 1.5rem;
 }
 
+/* Adjusted to white for better contrast on dark sidebar */
 .logo span {
-    color: var(--text-muted);
+    color: #9ca3af;
     font-size: 0.875rem;
 }
 
@@ -69,7 +76,7 @@ nav a {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    color: var(--text-muted);
+    color: #d1d5db;
     text-decoration: none;
     border-radius: 0.5rem;
     transition: all 0.2s;
@@ -77,8 +84,8 @@ nav a {
 
 nav a:hover,
 nav a.active {
-    background-color: rgba(79, 70, 229, 0.1);
-    color: var(--primary);
+    background-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
 }
 
 .status-box {
@@ -106,6 +113,7 @@ nav a.active {
     flex: 1;
     padding: 2rem;
     overflow-y: auto;
+    justify-content: space-between;
     background-color: var(--bg-dark);
 }
 
@@ -119,6 +127,7 @@ header {
 .header-title h1 {
     font-size: 1.875rem;
     font-weight: 700;
+    color: var(--primary);
 }
 
 .date-display {
@@ -132,7 +141,8 @@ header {
     gap: 1rem;
 }
 
-.btn-refresh {
+.btn-refresh,
+.btn-exportar {
     background-color: var(--bg-card);
     border: 1px solid var(--border);
     color: var(--text-main);
@@ -145,9 +155,11 @@ header {
     transition: all 0.2s;
 }
 
-.btn-refresh:hover {
-    border-color: var(--primary);
-    color: var(--primary);
+.btn-refresh:hover,
+.btn-exportar:hover {
+    border-color: var(--bg-card);
+    color: var(--bg-card);
+    background-color: var(--primary-dark);
 }
 
 .user-profile {
@@ -160,6 +172,7 @@ header {
     width: 36px;
     height: 36px;
     background-color: var(--primary);
+    color: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -180,6 +193,7 @@ header {
     border-radius: 1rem;
     padding: 1.5rem;
     border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .stat-card {
@@ -209,7 +223,7 @@ header {
 }
 
 .stat-icon.total {
-    background-color: rgba(79, 70, 229, 0.1);
+    background-color: rgba(42, 59, 133, 0.1);
     color: var(--primary);
 }
 
@@ -228,6 +242,7 @@ header {
     font-size: 1.5rem;
     font-weight: 700;
     margin: 0.25rem 0;
+    color: var(--text-main);
 }
 
 .stat-label {
@@ -263,6 +278,10 @@ header {
     border-color: var(--primary);
 }
 
+.table-responsive {
+    overflow-x: auto;
+}
+
 .data-table {
     width: 100%;
     border-collapse: collapse;
@@ -275,12 +294,14 @@ header {
     font-weight: 500;
     font-size: 0.875rem;
     border-bottom: 1px solid var(--border);
+    background-color: #f9fafb;
 }
 
 .data-table td {
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border);
     color: var(--text-main);
+    font-size: 0.875rem;
 }
 
 .data-table tr:last-child td {
@@ -288,7 +309,7 @@ header {
 }
 
 .data-table tr:hover {
-    background-color: rgba(255, 255, 255, 0.02);
+    background-color: rgba(0, 0, 0, 0.01);
 }
 
 /* Badges */
@@ -296,7 +317,7 @@ header {
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .badge-breakfast {
@@ -315,10 +336,11 @@ header {
 }
 
 .badge-synced {
-    background-color: rgba(79, 70, 229, 0.1);
+    background-color: rgba(42, 59, 133, 0.1);
     color: var(--primary);
 }
 
+/* Animations & Sections */
 .section {
     display: none;
 }
@@ -342,4 +364,45 @@ header {
 
 .text-center {
     text-align: center;
+}
+
+/* Media Query - Responsive Search Button */
+@media (max-width: 1050px) {
+    .search-box {
+        position: relative;
+    }
+
+    .search-box input {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        cursor: pointer;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+        text-indent: -9999px;
+        background-image: url('data:image/svg+xml;utf8,&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;20&quot; height=&quot;20&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;%232A3B85&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;11&quot; cy=&quot;11&quot; r=&quot;8&quot;&gt;&lt;/circle&gt;&lt;path d=&quot;m21 21-4.35-4.35&quot;&gt;&lt;/path&gt;&lt;/svg&gt;');
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 20px 20px;
+    }
+
+    .search-box input.expanded,
+    .search-box input:focus {
+        width: 250px;
+        border-radius: 0.5rem;
+        text-indent: 0;
+        padding: 0.5rem 1rem;
+        cursor: text;
+        background-image: none;
+    }
+
+    .search-box input:not(.expanded):not(:focus)::placeholder {
+        color: transparent;
+    }
+}
+
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }

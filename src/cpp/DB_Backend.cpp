@@ -645,14 +645,67 @@ bool DB_Backend::Eliminar_Usuario(const std::string &run_id) {
 
 bool DB_Backend::borrarTodo() {
   std::lock_guard<std::mutex> lock(db_mutex_);
+  const char *sql = "DELETE FROM RegistrosRaciones; DELETE FROM Usuarios; "
+                    "DELETE FROM DetallesEstudiante;";
+  return _ejecutar_sql_script(sql);
+}
 
-  const char *sql_clear = "DELETE FROM RegistrosRaciones;"
-                          "DELETE FROM DetallesEstudiante;"
-                          "DELETE FROM Usuarios;";
+// --- 7. API de Estadísticas y Reportes ---
 
-  std::cout << "[DB_Backend][QA] Borrando todos los datos de tablas "
-               "principales...\n";
-  return _ejecutar_sql_script(sql_clear);
+DB_Backend::EstadisticasHoy DB_Backend::Obtener_Estadisticas_Hoy() {
+  std::lock_guard<std::mutex> lock(db_mutex_);
+  EstadisticasHoy stats = {0, 0, 0};
+
+  const char *sql = R"(
+    SELECT 
+      SUM(CASE WHEN tipo_racion = 1 THEN 1 ELSE 0 END),
+      SUM(CASE WHEN tipo_racion = 2 THEN 1 ELSE 0 END),
+      COUNT(*)
+    FROM RegistrosRaciones
+    WHERE DATE(fecha_servicio) = DATE('now', 'localtime');
+  )";
+
+  sqlite3_stmt *stmt;
+  if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+      stats.count_desayunos = sqlite3_column_int(stmt, 0);
+      stats.count_almuerzos = sqlite3_column_int(stmt, 1);
+      stats.count_total = sqlite3_column_int(stmt, 2);
+    }
+  }
+  sqlite3_finalize(stmt);
+  return stats;
+}
+
+std::vector<PerfilEstudiante> DB_Backend::Obtener_Todos_Estudiantes() {
+  std::lock_guard<std::mutex> lock(db_mutex_);
+  std::vector<PerfilEstudiante> estudiantes;
+
+  const char *sql = R"(
+    SELECT u.run_id, u.nombre_completo, d.curso
+    FROM Usuarios u
+    LEFT JOIN DetallesEstudiante d ON u.run_id = d.run_estudiante
+    WHERE u.rol = 3
+    ORDER BY u.nombre_completo;
+  )";
+
+  sqlite3_stmt *stmt;
+  if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      PerfilEstudiante p;
+      const unsigned char *run = sqlite3_column_text(stmt, 0);
+      const unsigned char *nombre = sqlite3_column_text(stmt, 1);
+      const unsigned char *curso = sqlite3_column_text(stmt, 2);
+
+      p.run_id = run ? reinterpret_cast<const char *>(run) : "";
+      p.nombre_completo = nombre ? reinterpret_cast<const char *>(nombre) : "";
+      p.curso = curso ? reinterpret_cast<const char *>(curso) : "";
+
+      estudiantes.push_back(p);
+    }
+  }
+  sqlite3_finalize(stmt);
+  return estudiantes;
 }
 
 // ===== Helper Privado =====
