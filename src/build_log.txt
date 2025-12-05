@@ -1,0 +1,181 @@
+==========================================
+  COMPILAR Y EJECUTAR SERVIDOR WEB
+  Puerto: 18080
+==========================================
+
+[1/2] Compilando SQLite (C)...
+[OK] SQLite compilado correctamente.
+
+[2/2] Compilando proyecto C++...
+main.cpp: In function 'int main(int, char**)':
+main.cpp:83:10: error: 'class DB_Backend' has no member named 'borrarTodo'
+   83 |       db.borrarTodo();
+      |          ^~~~~~~~~~
+cpp/DB_Backend.cpp: In constructor 'DB_Backend::DB_Backend(const std::string&)':
+cpp/DB_Backend.cpp:40:7: error: class 'DB_Backend' does not have any field named 'db_handle_'
+   40 |     : db_handle_(nullptr), db_path_(db_path) {}
+      |       ^~~~~~~~~~
+cpp/DB_Backend.cpp: In destructor 'DB_Backend::~DB_Backend()':
+cpp/DB_Backend.cpp:44:7: error: 'db_handle_' was not declared in this scope
+   44 |   if (db_handle_) {
+      |       ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'bool DB_Backend::Inicializar_DB()':
+cpp/DB_Backend.cpp:52:47: error: 'db_handle_' was not declared in this scope
+   52 |   int rc = sqlite3_open_v2(db_path_.c_str(), &db_handle_,
+      |                                               ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'std::optional<Configuracion> DB_Backend::Obtener_Configuracion()':
+cpp/DB_Backend.cpp:155:26: error: 'db_handle_' was not declared in this scope
+  155 |   if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+      |                          ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'bool DB_Backend::Guardar_Configuracion(const Configuracion&)':
+cpp/DB_Backend.cpp:194:26: error: 'db_handle_' was not declared in this scope
+  194 |   if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+      |                          ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'bool DB_Backend::Obtener_Todos_Templates(std::map<std::__cxx11::basic_string<char>, std::vector<unsigned char> >&)':
+cpp/DB_Backend.cpp:222:26: error: 'db_handle_' was not declared in this scope
+  222 |   if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+      |                          ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'RolUsuario DB_Backend::Obtener_Perfil_Por_Run(const std::string&, PerfilEstudiante&)':
+cpp/DB_Backend.cpp:271:28: error: 'db_handle_' was not declared in this scope
+  271 |     if (sqlite3_prepare_v2(db_handle_, sql_join, -1, &stmt, nullptr) !=
+      |                            ^~~~~~~~~~
+cpp/DB_Backend.cpp:304:47: error: 'db_handle_' was not declared in this scope
+  304 |       throw std::runtime_error(sqlite3_errmsg(db_handle_));
+      |                                               ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'bool DB_Backend::Verificar_Racion_Doble(const std::string&, const std::string&, TipoRacion)':
+cpp/DB_Backend.cpp:335:28: error: 'db_handle_' was not declared in this scope
+  335 |     if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+      |                            ^~~~~~~~~~
+cpp/DB_Backend.cpp:350:59: error: 'db_handle_' was not declared in this scope
+  350 |                                std::string(sqlite3_errmsg(db_handle_)));
+      |                                                           ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'bool DB_Backend::Guardar_Registro_Racion(const RegistroRacion&)':
+cpp/DB_Backend.cpp:376:26: error: 'db_handle_' was not declared in this scope
+  376 |   if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+      |                          ^~~~~~~~~~
+cpp/DB_Backend.cpp:398:33: error: 'db_handle_' was not declared in this scope
+  398 |               << sqlite3_errmsg(db_handle_) << "\n";
+      |                                 ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'std::vector<RegistroRacion> DB_Backend::Obtener_Registros_Pendientes()':
+cpp/DB_Backend.cpp:420:26: error: 'db_handle_' was not declared in this scope
+  420 |   if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+      |                          ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'std::vector<RegistroRacion> DB_Backend::Obtener_Ultimos_Registros(int)':
+cpp/DB_Backend.cpp:466:26: error: 'db_handle_' was not declared in this scope
+  466 |   if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+      |                          ^~~~~~~~~~
+cpp/DB_Backend.cpp: In member function 'bool DB_Backend::Marcar_Registros_Sincronizados(const std::vector<long long int>&)':
+cpp/DB_Backend.cpp:515:26: error: 'db_handle_' was not declared in this scope
+  515 |   if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+      |                          ^~~~~~~~~~
+cpp/DB_Backend.cpp: At global scope:
+cpp/DB_Backend.cpp:543:6: error: no declaration matches 'bool DB_Backend::Enrolar_Estudiante_Completo(const RequestEnrolarUsuario&)'
+  543 | bool DB_Backend::Enrolar_Estudiante_Completo(
+      |      ^~~~~~~~~~
+cpp/DB_Backend.cpp:543:6: note: no functions named 'bool DB_Backend::Enrolar_Estudiante_Completo(const RequestEnrolarUsuario&)'
+In file included from cpp/DB_Backend.cpp:3:
+h/DB_Backend.hpp:18:7: note: 'class DB_Backend' defined here
+   18 | class DB_Backend {
+      |       ^~~~~~~~~~
+cpp/DB_Backend.cpp:633:6: error: no declaration matches 'bool DB_Backend::Eliminar_Usuario(const std::string&)'
+  633 | bool DB_Backend::Eliminar_Usuario(const std::string &run_id) {
+      |      ^~~~~~~~~~
+cpp/DB_Backend.cpp:633:6: note: no functions named 'bool DB_Backend::Eliminar_Usuario(const std::string&)'
+h/DB_Backend.hpp:18:7: note: 'class DB_Backend' defined here
+   18 | class DB_Backend {
+      |       ^~~~~~~~~~
+cpp/TemplateManager.cpp: In function 'void menuEnroll(Sensor&, DB_Backend&)':
+cpp/TemplateManager.cpp:256:10: error: 'class DB_Backend' has no member named 'Enrolar_Estudiante_Completo'
+  256 |   if (db.Enrolar_Estudiante_Completo(req)) {
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+cpp/HeadlessManager.cpp: In member function 'void HeadlessManager::cmdEnroll(const std::string&)':
+cpp/HeadlessManager.cpp:203:12: error: 'class DB_Backend' has no member named 'Enrolar_Estudiante_Completo'
+  203 |     if (db.Enrolar_Estudiante_Completo(req)) {
+      |            ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+cpp/CrowServer.cpp: In lambda function:
+cpp/CrowServer.cpp:99:26: error: 'const struct PerfilEstudiante' has no member named 'run'
+   99 |       student["run"] = s.run;
+      |                          ^~~
+In file included from cpp/CrowServer.cpp:3:
+libs/include/crow_all.h: In instantiation of 'typename std::enable_if<crow::black_magic::CallHelper<F, crow::black_magic::S<Args ...> >::value, void>::type crow::detail::wrapped_handler_call(crow::request&, crow::response&, const F&, Args&& ...) [with F = runWebServer(DB_Backend&)::<lambda()>; Args = {}; typename std::enable_if<crow::black_magic::CallHelper<F, crow::black_magic::S<Args ...> >::value, void>::type = void]':
+libs/include/crow_all.h:13058:45:   required from 'void crow::TaggedRule<Args>::operator()(Func&&) [with Func = runWebServer(DB_Backend&)::<lambda()>; Args = {}]'
+13058 |                 detail::wrapped_handler_call(req, res, f, std::forward<Args>(args)...);
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cpp/CrowServer.cpp:94:3:   required from here
+   94 |   ([&db]() {
+      |   ^
+libs/include/crow_all.h:10485:25: error: no matching function for call to 'crow::response::response(std::vector<crow::json::wvalue>)'
+10485 |             res = crow::response(f(std::forward<Args>(args)...));
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+libs/include/crow_all.h:10485:25: note: there are 11 candidates
+libs/include/crow_all.h:9068:9: note: candidate 1: 'crow::response::response(crow::returnable&)'
+ 9068 |         response(returnable& value)
+      |         ^~~~~~~~
+libs/include/crow_all.h:9068:30: note: no known conversion for argument 1 from 'std::vector<crow::json::wvalue>' to 'crow::returnable&'
+ 9068 |         response(returnable& value)
+      |                  ~~~~~~~~~~~~^~~~~
+libs/include/crow_all.h:9096:9: note: candidate 2: 'crow::response::response(int, std::string, std::string)'
+ 9096 |         response(int code_, std::string contentType, std::string body_):
+      |         ^~~~~~~~
+libs/include/crow_all.h:9096:9: note: candidate expects 3 arguments, 1 provided
+libs/include/crow_all.h:9090:9: note: candidate 3: 'crow::response::response(std::string, std::string)'
+ 9090 |         response(std::string contentType, std::string body_):
+      |         ^~~~~~~~
+libs/include/crow_all.h:9090:9: note: candidate expects 2 arguments, 1 provided
+libs/include/crow_all.h:9085:9: note: candidate 4: 'crow::response::response(crow::response&&)'
+ 9085 |         response(response&& r)
+      |         ^~~~~~~~
+libs/include/crow_all.h:9085:29: note: no known conversion for argument 1 from 'std::vector<crow::json::wvalue>' to 'crow::response&&'
+ 9085 |         response(response&& r)
+      |                  ~~~~~~~~~~~^
+libs/include/crow_all.h:9079:9: note: candidate 5: 'crow::response::response(int, crow::returnable&&)'
+ 9079 |         response(int code_, returnable&& value):
+      |         ^~~~~~~~
+libs/include/crow_all.h:9079:9: note: candidate expects 2 arguments, 1 provided
+libs/include/crow_all.h:9073:9: note: candidate 6: 'crow::response::response(int, crow::returnable&)'
+ 9073 |         response(int code_, returnable& value):
+      |         ^~~~~~~~
+libs/include/crow_all.h:9073:9: note: candidate expects 2 arguments, 1 provided
+libs/include/crow_all.h:9063:9: note: candidate 7: 'crow::response::response(crow::returnable&&)'
+ 9063 |         response(returnable&& value)
+      |         ^~~~~~~~
+libs/include/crow_all.h:9063:31: note: no known conversion for argument 1 from 'std::vector<crow::json::wvalue>' to 'crow::returnable&&'
+ 9063 |         response(returnable&& value)
+      |                  ~~~~~~~~~~~~~^~~~~
+libs/include/crow_all.h:9061:9: note: candidate 8: 'crow::response::response(int, std::string)'
+ 9061 |         response(int code_, std::string body_) : code(code_), body(std::move(body_)) {}
+      |         ^~~~~~~~
+libs/include/crow_all.h:9061:9: note: candidate expects 2 arguments, 1 provided
+libs/include/crow_all.h:9060:9: note: candidate 9: 'crow::response::response(std::string)'
+ 9060 |         response(std::string body_) : body(std::move(body_)) {}
+      |         ^~~~~~~~
+libs/include/crow_all.h:9060:30: note: no known conversion for argument 1 from 'std::vector<crow::json::wvalue>' to 'std::string' {aka 'std::__cxx11::basic_string<char>'}
+ 9060 |         response(std::string body_) : body(std::move(body_)) {}
+      |                  ~~~~~~~~~~~~^~~~~
+libs/include/crow_all.h:9059:18: note: candidate 10: 'crow::response::response(int)'
+ 9059 |         explicit response(int code_) : code(code_) {}
+      |                  ^~~~~~~~
+libs/include/crow_all.h:9059:31: note: no known conversion for argument 1 from 'std::vector<crow::json::wvalue>' to 'int'
+ 9059 |         explicit response(int code_) : code(code_) {}
+      |                           ~~~~^~~~~
+libs/include/crow_all.h:9058:9: note: candidate 11: 'crow::response::response()'
+ 9058 |         response() {}
+      |         ^~~~~~~~
+libs/include/crow_all.h:9058:9: note: candidate expects 0 arguments, 1 provided
+cpp/Endpoints.cpp: In function 'EstadisticasGenerales GetTodayStats(DB_Backend&)':
+cpp/Endpoints.cpp:4:19: error: 'class DB_Backend' has no member named 'Obtener_Estadisticas_Hoy'
+    4 |   auto stats = db.Obtener_Estadisticas_Hoy();
+      |                   ^~~~~~~~~~~~~~~~~~~~~~~~
+cpp/Endpoints.cpp:5:74: error: could not convert '{<expression error>, <expression error>, <expression error>}' from '<brace-enclosed initializer list>' to 'EstadisticasGenerales'
+    5 |   return {stats.count_desayunos, stats.count_almuerzos, stats.count_total};
+      |                                                                          ^
+      |                                                                          |
+      |                                                                          <brace-enclosed initializer list>
+cpp/Endpoints.cpp: In function 'std::vector<PerfilEstudiante> GetAllStudents(DB_Backend&)':
+cpp/Endpoints.cpp:9:13: error: 'class DB_Backend' has no member named 'Obtener_Todos_Estudiantes'; did you mean 'Obtener_Todos_Templates'?
+    9 |   return db.Obtener_Todos_Estudiantes();
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~
+      |             Obtener_Todos_Templates
+
+[X] ERROR EN LA COMPILACION.
+Presione una tecla para continuar . . . 

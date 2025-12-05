@@ -1,0 +1,16 @@
+==========================================
+  COMPILAR Y EJECUTAR SERVIDOR WEB
+  Puerto: 18080
+==========================================
+
+[1/2] Compilando SQLite (C)...
+[OK] SQLite compilado correctamente.
+
+[2/2] Compilando proyecto C++...
+C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: C:\Users\fabio\AppData\Local\Temp\ccvb6sX8.o:main.cpp:(.text+0x393): undefined reference to `DB_Backend::borrarTodo()'
+C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: C:\Users\fabio\AppData\Local\Temp\cc3hBhHr.o:Endpoints.cpp:(.text+0x1c): undefined reference to `DB_Backend::Obtener_Estadisticas_Hoy()'
+C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: C:\Users\fabio\AppData\Local\Temp\cc3hBhHr.o:Endpoints.cpp:(.text+0x63): undefined reference to `DB_Backend::Obtener_Todos_Estudiantes()'
+collect2.exe: error: ld returned 1 exit status
+
+[X] ERROR EN LA COMPILACION.
+Presione una tecla para continuar . . . 

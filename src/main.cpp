@@ -1,12 +1,13 @@
 #include "CrowServer.hpp"
 #include "DB_Backend.hpp"
+#include "HeadlessManager.hpp"
 #include "Sensor.h"
 #include "TemplateManager.hpp"
 #include <iostream>
 #include <stdlib.h>
 #include <string.h>
 
-
+// Function to print the main menu
 void printMenu() {
   std::cout << "\n========= MENU HUELLERO DIGITADOR PIAMARTA =========\n";
   std::cout << "1) Enrolar alumno\n";
@@ -43,6 +44,13 @@ int main(int argc, char *argv[]) {
   if (!sensor.initSensor()) {
     std::cerr << "(-) No se pudo inicializar el sensor de huella.\n";
     return 1;
+  }
+
+  // Check for headless mode (for Totem)
+  if (argc > 1 && strcmp(argv[1], "--headless") == 0) {
+    HeadlessManager headless(sensor, db);
+    headless.run();
+    return 0;
   }
 
   system("CLS");
