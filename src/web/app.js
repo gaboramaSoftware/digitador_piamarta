@@ -1,17 +1,32 @@
-// App Logic
+// App.js - MEJORADO CON UX DE CAPTURA DE HUELLA
+
+// Variables globales
+let allStudents = [];
+let currentStudent = null;
+let clickTimeout = null;
+let clickCount = 0;
+let sensorAvailable = false;
+
+// Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     updateDate();
+    checkSensorStatus(); // Verificar sensor al inicio
     fetchStats();
-    fetchData(); // Still fetch recent records for the table
+    fetchData();
 
-    // Auto refresh every 5 seconds
+    // Auto refresh cada 5 segundos
     setInterval(() => {
         fetchStats();
         fetchData();
     }, 5000);
 
     // Responsive search button behavior
-    const searchInput = document.getElementById('search-input');
+    setupSearchBehavior('search-input');
+    setupSearchBehavior('search-students-input');
+});
+
+function setupSearchBehavior(inputId) {
+    const searchInput = document.getElementById(inputId);
     if (searchInput) {
         searchInput.addEventListener('click', (e) => {
             if (window.innerWidth <= 1050) {
@@ -25,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-});
+}
 
 function updateDate() {
     const now = new Date();
@@ -34,18 +49,13 @@ function updateDate() {
 }
 
 function showSection(sectionId) {
-    // Hide all sections
     document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('nav a').forEach(el => el.classList.remove('active'));
-
-    // Show target section
     document.getElementById(sectionId).classList.add('active');
 
-    // Update nav
     const navItem = Array.from(document.querySelectorAll('nav a')).find(el => el.getAttribute('onclick').includes(sectionId));
     if (navItem) navItem.classList.add('active');
 
-    // Update title
     const titles = {
         'dashboard': 'Dashboard',
         'students': 'Gestión de Estudiantes',
@@ -54,11 +64,31 @@ function showSection(sectionId) {
     };
     document.getElementById('page-title').textContent = titles[sectionId];
 
-    // Load specific data
     if (sectionId === 'students') {
         fetchStudents();
     }
 }
+
+// ========== VERIFICAR ESTADO DEL SENSOR ==========
+
+async function checkSensorStatus() {
+    try {
+        const response = await fetch('/api/sensor/status');
+        const data = await response.json();
+        sensorAvailable = data.available;
+
+        if (!sensorAvailable) {
+            console.warn('⚠️ Sensor de huellas no disponible');
+        } else {
+            console.log('✓ Sensor de huellas conectado');
+        }
+    } catch (error) {
+        console.error('Error verificando sensor:', error);
+        sensorAvailable = false;
+    }
+}
+
+// ========== API CALLS ==========
 
 async function fetchStats() {
     try {
@@ -89,13 +119,31 @@ async function fetchStudents() {
 
     try {
         const response = await fetch('/api/students');
-        const students = await response.json();
-        renderStudentsTable(students);
+        allStudents = await response.json();
+        renderStudentsTable(allStudents);
     } catch (error) {
         console.error('Error fetching students:', error);
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">Error al cargar datos</td></tr>';
     }
 }
+
+async function fetchStudentStats(run) {
+    try {
+        const response = await fetch(`/api/students/${run}/stats`);
+        const stats = await response.json();
+        return stats;
+    } catch (error) {
+        console.error('Error fetching student stats:', error);
+        return {
+            desayunos: 0,
+            almuerzos: 0,
+            total: 0,
+            porcentaje_asistencia: 0
+        };
+    }
+}
+
+// ========== RENDER FUNCTIONS ==========
 
 function renderTable(records) {
     const tbody = document.getElementById('records-body');
@@ -116,7 +164,6 @@ function renderTable(records) {
             '<span class="badge badge-synced">Sincronizado</span>' :
             '<span class="badge badge-pending">Pendiente</span>';
 
-        // Format timestamp if available, otherwise use date
         const time = record.hora ? new Date(record.hora).toLocaleTimeString() : record.fecha;
 
         html += `
@@ -149,14 +196,19 @@ function renderStudentsTable(students) {
     let html = '';
 
     students.forEach(student => {
+        const statusBadge = student.activo ?
+            '<span class="badge badge-synced">Activo</span>' :
+            '<span class="badge badge-pending">Inactivo</span>';
+
         html += `
-            <tr>
-                <td>#</td>
+            <tr ondblclick="openStudentStats('${student.run}')" style="cursor: pointer;">
                 <td>${student.run}</td>
                 <td>${student.nombre}</td>
                 <td>${student.curso}</td>
+                <td>${statusBadge}</td>
                 <td>
-                    <button class="btn-action" onclick="alert('Editar ${student.run}')">✏️</button>
+                    <button class="btn-action" onclick="event.stopPropagation(); openStudentStats('${student.run}')" title="Ver estadísticas">📊</button>
+                    <button class="btn-action btn-action-danger" onclick="event.stopPropagation(); openDeleteModalDirect('${student.run}')" title="Eliminar">🗑️</button>
                 </td>
             </tr>
         `;
@@ -165,30 +217,255 @@ function renderStudentsTable(students) {
     tbody.innerHTML = html;
 }
 
-function refreshData() {
-    const btn = document.querySelector('.btn-refresh');
-    btn.innerHTML = '<span class="icon">⌛</span> Cargando...';
+// ========== MODAL FUNCTIONS ==========
 
-    Promise.all([fetchStats(), fetchData()]).then(() => {
-        setTimeout(() => {
-            btn.innerHTML = '<span class="icon">🔄</span> Actualizar';
-        }, 500);
-    });
+function openEnrollModal() {
+    // Verificar estado del sensor antes de abrir el modal
+    if (!sensorAvailable) {
+        if (!confirm('⚠️ ADVERTENCIA: El sensor de huellas no está disponible.\n\n' +
+            'No se podrá capturar la huella dactilar del estudiante.\n' +
+            'Verifique que el lector USB esté conectado.\n\n' +
+            '¿Desea continuar de todas formas?')) {
+            return;
+        }
+    }
+
+    document.getElementById('enrollModal').style.display = 'flex';
+    document.getElementById('enrollForm').reset();
 }
 
-function exportToExcel() {
-    const btn = document.querySelector('.btn-exportar');
-    btn.innerHTML = '<span class="icon">⌛</span> Exportando...';
-
-    setTimeout(() => {
-        alert('Funcionalidad de exportación pendiente de implementación');
-        btn.innerHTML = 'Exportar a Excel';
-    }, 1000);
+function closeEnrollModal() {
+    document.getElementById('enrollModal').style.display = 'none';
 }
 
-function exportStudentsToExcel() {
-    alert('Funcionalidad de exportación de estudiantes pendiente');
+async function openStudentStats(run) {
+    const student = allStudents.find(s => s.run === run);
+    if (!student) return;
+
+    currentStudent = student;
+
+    const firstLetter = student.nombre.charAt(0).toUpperCase();
+    document.getElementById('stats-avatar-letter').textContent = firstLetter;
+    document.getElementById('stats-student-name').textContent = student.nombre;
+    document.getElementById('stats-student-run').textContent = `RUN: ${student.run}`;
+    document.getElementById('stats-student-curso').textContent = `Curso: ${student.curso}`;
+
+    const [nombre, ...apellidos] = student.nombre.split(' ');
+    document.getElementById('edit-nombre').value = nombre;
+    document.getElementById('edit-apellido').value = apellidos.join(' ');
+    document.getElementById('edit-run').value = student.run;
+
+    const stats = await fetchStudentStats(run);
+    document.getElementById('stats-breakfast').textContent = stats.desayunos || 0;
+    document.getElementById('stats-lunch').textContent = stats.almuerzos || 0;
+    document.getElementById('stats-total').textContent = stats.total || 0;
+    document.getElementById('stats-percentage').textContent = `${stats.porcentaje_asistencia || 0}%`;
+
+    document.getElementById('statsModal').style.display = 'flex';
 }
+
+function closeStatsModal() {
+    document.getElementById('statsModal').style.display = 'none';
+    currentStudent = null;
+}
+
+function openDeleteModalDirect(run) {
+    const student = allStudents.find(s => s.run === run);
+    if (!student) return;
+
+    currentStudent = student;
+    document.getElementById('delete-student-name').textContent = student.nombre;
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+
+function confirmDeleteStudent() {
+    if (!currentStudent) return;
+
+    document.getElementById('delete-student-name').textContent = currentStudent.nombre;
+    closeStatsModal();
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+}
+
+// ========== FORM HANDLERS - ENROLAMIENTO CON HUELLA ==========
+
+async function handleEnrollStudent(event) {
+    event.preventDefault();
+
+    const formData = {
+        run: document.getElementById('enroll-run').value.toUpperCase(),
+        nombre: document.getElementById('enroll-nombre').value.trim(),
+        apellido: document.getElementById('enroll-apellido').value.trim(),
+        curso: document.getElementById('enroll-curso').value
+    };
+
+    const nombreCompleto = `${formData.nombre} ${formData.apellido}`;
+
+    // Cambiar UI del botón
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="icon">👆</span> Coloque su dedo en el sensor...';
+    submitBtn.disabled = true;
+
+    // Mostrar mensaje en el modal
+    const modalBody = document.querySelector('#enrollModal .modal-body');
+    let statusDiv = document.getElementById('fingerprint-status');
+
+    if (!statusDiv) {
+        statusDiv = document.createElement('div');
+        statusDiv.id = 'fingerprint-status';
+        statusDiv.style.cssText = `
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: #FEF3C7;
+            border: 2px solid #F59E0B;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            color: #92400E;
+        `;
+        modalBody.insertBefore(statusDiv, modalBody.firstChild);
+    }
+
+    statusDiv.innerHTML = '⏳ Esperando huella... Por favor, coloque su dedo en el sensor.';
+    statusDiv.style.display = 'block';
+
+    try {
+        // Esta llamada va a tardar ~5-15 segundos mientras espera el dedo
+        const response = await fetch('/api/students', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                run: formData.run,
+                nombre: nombreCompleto,
+                curso: formData.curso
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            statusDiv.innerHTML = '✅ ¡Huella capturada exitosamente!';
+            statusDiv.style.backgroundColor = '#D1FAE5';
+            statusDiv.style.borderColor = '#10B981';
+            statusDiv.style.color = '#065F46';
+
+            setTimeout(() => {
+                alert(`✓ Estudiante enrolado exitosamente\n\n` +
+                    `Nombre: ${nombreCompleto}\n` +
+                    `RUN: ${formData.run}\n` +
+                    `Huella: ${result.fingerprint_size} bytes capturados`);
+                closeEnrollModal();
+                fetchStudents();
+                checkSensorStatus(); // Re-verificar sensor
+            }, 1000);
+        } else {
+            // Manejar errores específicos
+            let errorMsg = result.message || 'Error desconocido';
+            let errorIcon = '❌';
+
+            if (result.error_code === 'SENSOR_INIT_FAILED') {
+                errorIcon = '🔌';
+                errorMsg = 'Sensor desconectado. Verifique el cable USB y reintente.';
+            } else if (result.error_code === 'FINGERPRINT_TIMEOUT') {
+                errorIcon = '⏱️';
+                errorMsg = 'Tiempo agotado. No se detectó el dedo en el sensor.';
+            } else if (result.error_code === 'DATABASE_ERROR') {
+                errorIcon = '🗄️';
+                errorMsg = 'Error de base de datos. El RUN podría estar duplicado.';
+            }
+
+            statusDiv.innerHTML = `${errorIcon} ${errorMsg}`;
+            statusDiv.style.backgroundColor = '#FEE2E2';
+            statusDiv.style.borderColor = '#EF4444';
+            statusDiv.style.color = '#991B1B';
+
+            alert(`Error al enrolar estudiante:\n\n${errorMsg}`);
+        }
+    } catch (error) {
+        console.error('Error enrolling student:', error);
+        statusDiv.innerHTML = '⚠️ Error de conexión con el servidor';
+        statusDiv.style.backgroundColor = '#FEE2E2';
+        statusDiv.style.borderColor = '#EF4444';
+        statusDiv.style.color = '#991B1B';
+        alert('Error al conectar con el servidor. Verifique su conexión.');
+    } finally {
+        // Restaurar botón
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+
+        // Ocultar mensaje de status después de 3 segundos si hubo error
+        if (statusDiv.innerHTML.includes('❌') || statusDiv.innerHTML.includes('⚠️')) {
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+}
+
+async function handleEditStudent(event) {
+    event.preventDefault();
+
+    if (!currentStudent) return;
+
+    const nombre = document.getElementById('edit-nombre').value.trim();
+    const apellido = document.getElementById('edit-apellido').value.trim();
+    const nombreCompleto = `${nombre} ${apellido}`;
+
+    try {
+        const response = await fetch(`/api/students/${currentStudent.run}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                nombre: nombreCompleto
+            })
+        });
+
+        if (response.ok) {
+            alert('Estudiante actualizado exitosamente');
+            closeStatsModal();
+            fetchStudents();
+        } else {
+            const error = await response.json();
+            alert('Error al actualizar estudiante: ' + (error.message || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error updating student:', error);
+        alert('Error al conectar con el servidor');
+    }
+}
+
+async function handleDeleteStudent() {
+    if (!currentStudent) return;
+
+    try {
+        const response = await fetch(`/api/students/${currentStudent.run}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            alert('Estudiante eliminado exitosamente');
+            closeDeleteModal();
+            fetchStudents();
+            currentStudent = null;
+        } else {
+            const error = await response.json();
+            alert('Error al eliminar estudiante: ' + (error.message || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error deleting student:', error);
+        alert('Error al conectar con el servidor');
+    }
+}
+
+// ========== FILTER FUNCTIONS ==========
 
 function filterTable() {
     const input = document.getElementById('search-input');
@@ -216,8 +493,8 @@ function filterStudentsTable() {
     const rows = tbody.getElementsByTagName('tr');
 
     for (let i = 0; i < rows.length; i++) {
-        const runCol = rows[i].getElementsByTagName('td')[1];
-        const nameCol = rows[i].getElementsByTagName('td')[2];
+        const runCol = rows[i].getElementsByTagName('td')[0];
+        const nameCol = rows[i].getElementsByTagName('td')[1];
         if (runCol && nameCol) {
             const runText = runCol.textContent || runCol.innerText;
             const nameText = nameCol.textContent || nameCol.innerText;
@@ -230,142 +507,102 @@ function filterStudentsTable() {
     }
 }
 
-function updateDate() {
-    const now = new Date();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('current-date').textContent = now.toLocaleDateString('es-ES', options);
+function filterStudentsByCourse() {
+    const courseFilter = document.getElementById('course-filter').value;
+    const tbody = document.getElementById('students-body');
+    const rows = tbody.getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const courseCol = rows[i].getElementsByTagName('td')[2];
+        if (courseCol) {
+            const courseText = courseCol.textContent || courseCol.innerText;
+            if (courseFilter === "" || courseText === courseFilter) {
+                rows[i].style.display = "";
+            } else {
+                rows[i].style.display = "none";
+            }
+        }
+    }
 }
 
-function showSection(sectionId) {
-    // Hide all sections
-    document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('nav a').forEach(el => el.classList.remove('active'));
+// ========== EXPORT FUNCTIONS ==========
 
-    // Show target section
-    document.getElementById(sectionId).classList.add('active');
+async function exportToExcel() {
+    const btn = document.querySelector('.btn-exportar');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="icon">⌛</span> Exportando...';
+    btn.disabled = true;
 
-    // Update nav
-    const navItem = Array.from(document.querySelectorAll('nav a')).find(el => el.getAttribute('onclick').includes(sectionId));
-    if (navItem) navItem.classList.add('active');
-
-    // Update title
-    const titles = {
-        'dashboard': 'Dashboard',
-        'students': 'Gestión de Estudiantes',
-        'reports': 'Reportes',
-        'settings': 'Configuración'
-    };
-    document.getElementById('page-title').textContent = titles[sectionId];
-}
-
-async function fetchData() {
     try {
-        const response = await fetch('/api/recent');
-        const data = await response.json();
-
-        updateStats(data.records);
-        renderTable(data.records);
-
+        const response = await fetch('/api/export/records');
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `registros_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } else {
+            alert('Error al exportar los datos');
+        }
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error exporting to Excel:', error);
+        alert('Error al exportar los datos');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 }
 
-function updateStats(records) {
-    // Calculate stats from today's records
-    // Note: In a real app, we might want a dedicated stats endpoint //can we do this? 
-    //can we do this now? 
+async function exportStudentsToExcel() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="icon">⌛</span> Exportando...';
+    btn.disabled = true;
 
-    const today = new Date().toISOString().split('T')[0];
-
-    const todayRecords = records.filter(r => r.fecha === today);
-
-    const breakfast = todayRecords.filter(r => r.tipo_racion === 1).length;
-    const lunch = todayRecords.filter(r => r.tipo_racion === 2).length;
-
-    document.getElementById('count-breakfast').textContent = breakfast;
-    document.getElementById('count-lunch').textContent = lunch;
-    document.getElementById('count-total').textContent = breakfast + lunch;
-}
-
-function renderTable(records) {
-    const tbody = document.getElementById('records-body');
-
-    if (records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No hay registros recientes</td></tr>';
-        return;
+    try {
+        const response = await fetch('/api/export/students');
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `estudiantes_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } else {
+            alert('Error al exportar los datos');
+        }
+    } catch (error) {
+        console.error('Error exporting students to Excel:', error);
+        alert('Error al exportar los datos');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
-
-    let html = '';
-
-    records.forEach(record => {
-        const rationType = record.tipo_racion === 1 ?
-            '<span class="badge badge-breakfast">Desayuno</span>' :
-            '<span class="badge badge-lunch">Almuerzo</span>';
-
-        const status = record.estado === 'SINCRONIZADO' ?
-            '<span class="badge badge-synced">Sincronizado</span>' :
-            '<span class="badge badge-pending">Pendiente</span>';
-
-        // Format timestamp if available, otherwise use date
-        const time = record.hora ? new Date(record.hora).toLocaleTimeString() : record.fecha;
-
-        html += `
-            <tr>
-                <td>#${record.id}</td>
-                <td>
-                    <div style="font-weight: 600;">${record.nombre_completo}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">${record.run}</div>
-                </td>
-                <td>${record.curso}</td>
-                <td>${rationType}</td>
-                <td>${time}</td>
-                <td>${record.terminal}</td>
-                <td>${status}</td>
-            </tr>
-        `;
-    });
-
-    tbody.innerHTML = html;
 }
+
+// ========== REFRESH DATA ==========
 
 function refreshData() {
     const btn = document.querySelector('.btn-refresh');
     btn.innerHTML = '<span class="icon">⌛</span> Cargando...';
 
-    fetchData().then(() => {
+    Promise.all([fetchStats(), fetchData(), checkSensorStatus()]).then(() => {
         setTimeout(() => {
             btn.innerHTML = '<span class="icon">🔄</span> Actualizar';
         }, 500);
     });
 }
 
-function exportToExcel() {
-    const btn = document.querySelector('.btn-exportar');
-    btn.innerHTML = '<span class="icon">⌛</span> Exportando...';
-
-    fetchData().then(() => {
-        setTimeout(() => {
-            btn.innerHTML = '<span class="icon">🔄</span> Exportar';
-        }, 500);
-    });
-}
-
-function filterTable() {
-    const input = document.getElementById('search-input');
-    const filter = input.value.toLowerCase();
-    const tbody = document.getElementById('records-body');
-    const rows = tbody.getElementsByTagName('tr');
-
-    for (let i = 0; i < rows.length; i++) {
-        const nameCol = rows[i].getElementsByTagName('td')[1];
-        if (nameCol) {
-            const txtValue = nameCol.textContent || nameCol.innerText;
-            if (txtValue.toLowerCase().indexOf(filter) > -1) {
-                rows[i].style.display = "";
-            } else {
-                rows[i].style.display = "none";
-            }
-        }
+// Cerrar modales al hacer clic fuera de ellos
+window.onclick = function (event) {
+    if (event.target.classList.contains('modal')) {
+        event.target.style.display = 'none';
     }
 }

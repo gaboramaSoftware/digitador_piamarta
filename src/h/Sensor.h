@@ -5,7 +5,6 @@
 #include <vector>
 #include <windows.h>
 
-
 // zkteco sdk
 #include "libzkfp.h"
 #include "libzkfperrdef.h"

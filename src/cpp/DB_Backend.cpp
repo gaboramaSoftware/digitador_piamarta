@@ -576,9 +576,14 @@ bool DB_Backend::Enrolar_Estudiante_Completo(
                       SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt_user, 4, static_cast<int>(RolUsuario::Estudiante));
 
-    sqlite3_bind_blob(stmt_user, 5, request.template_huella.data(),
-                      static_cast<int>(request.template_huella.size()),
-                      SQLITE_STATIC);
+    // Handle empty fingerprint gracefully (use zero-byte BLOB, not NULL)
+    if (request.template_huella.empty()) {
+      sqlite3_bind_zeroblob(stmt_user, 5, 0);
+    } else {
+      sqlite3_bind_blob(stmt_user, 5, request.template_huella.data(),
+                        static_cast<int>(request.template_huella.size()),
+                        SQLITE_TRANSIENT); // Use TRANSIENT for safety
+    }
 
     sqlite3_bind_null(stmt_user, 6);
 
@@ -684,8 +689,8 @@ std::vector<PerfilEstudiante> DB_Backend::Obtener_Todos_Estudiantes() {
   const char *sql = R"(
     SELECT u.run_id, u.nombre_completo, d.curso
     FROM Usuarios u
-    LEFT JOIN DetallesEstudiante d ON u.run_id = d.run_estudiante
-    WHERE u.rol = 3
+    LEFT JOIN DetallesEstudiante d ON u.run_id = d.run_id
+    WHERE u.id_rol = 3
     ORDER BY u.nombre_completo;
   )";
 
@@ -706,6 +711,87 @@ std::vector<PerfilEstudiante> DB_Backend::Obtener_Todos_Estudiantes() {
   }
   sqlite3_finalize(stmt);
   return estudiantes;
+}
+
+bool DB_Backend::Actualizar_Estudiante(const std::string &run_id,
+                                       const std::string &nuevo_nombre) {
+  std::lock_guard<std::mutex> lock(db_mutex_);
+
+  const char *sql =
+      "UPDATE Usuarios SET nombre_completo = ?1 WHERE run_id = ?2;";
+
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+    std::cerr << "[DB_Backend] ERROR prepare Actualizar_Estudiante: "
+              << sqlite3_errmsg(db_handle_) << "\n";
+    return false;
+  }
+
+  sqlite3_bind_text(stmt, 1, nuevo_nombre.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, run_id.c_str(), -1, SQLITE_TRANSIENT);
+
+  int rc = sqlite3_step(stmt);
+  bool success = (rc == SQLITE_DONE);
+
+  if (!success) {
+    std::cerr << "[DB_Backend] ERROR actualizando estudiante: "
+              << sqlite3_errmsg(db_handle_) << "\n";
+  }
+
+  sqlite3_finalize(stmt);
+  return success;
+}
+
+DB_Backend::EstadisticasEstudiante
+DB_Backend::Obtener_Estadisticas_Estudiante(const std::string &run_id) {
+  std::lock_guard<std::mutex> lock(db_mutex_);
+  EstadisticasEstudiante stats = {0, 0, 0, 0};
+
+  // Get meal counts for this student
+  const char *sql = R"(
+    SELECT 
+      SUM(CASE WHEN tipo_racion = 1 THEN 1 ELSE 0 END) as desayunos,
+      SUM(CASE WHEN tipo_racion = 2 THEN 1 ELSE 0 END) as almuerzos,
+      COUNT(*) as total
+    FROM RegistrosRaciones
+    WHERE id_estudiante = ?1;
+  )";
+
+  sqlite3_stmt *stmt;
+  if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+    sqlite3_bind_text(stmt, 1, run_id.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+      stats.count_desayunos = sqlite3_column_int(stmt, 0);
+      stats.count_almuerzos = sqlite3_column_int(stmt, 1);
+      stats.count_total = sqlite3_column_int(stmt, 2);
+    }
+  }
+  sqlite3_finalize(stmt);
+
+  // Calculate attendance percentage (last 30 days)
+  const char *sql_attendance = R"(
+    SELECT COUNT(DISTINCT DATE(fecha_servicio)) as dias_asistencia
+    FROM RegistrosRaciones
+    WHERE id_estudiante = ?1 
+      AND DATE(fecha_servicio) >= DATE('now', '-30 days', 'localtime');
+  )";
+
+  if (sqlite3_prepare_v2(db_handle_, sql_attendance, -1, &stmt, nullptr) ==
+      SQLITE_OK) {
+    sqlite3_bind_text(stmt, 1, run_id.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+      int dias_asistencia = sqlite3_column_int(stmt, 0);
+      // Assuming ~22 working days per month
+      stats.porcentaje_asistencia = (dias_asistencia * 100) / 22;
+      if (stats.porcentaje_asistencia > 100)
+        stats.porcentaje_asistencia = 100;
+    }
+  }
+  sqlite3_finalize(stmt);
+
+  return stats;
 }
 
 // ===== Helper Privado =====

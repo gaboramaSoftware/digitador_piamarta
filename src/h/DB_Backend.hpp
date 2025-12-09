@@ -94,6 +94,20 @@ public:
   // Obtiene todos los estudiantes
   std::vector<PerfilEstudiante> Obtener_Todos_Estudiantes();
 
+  // Actualiza el nombre de un estudiante
+  bool Actualizar_Estudiante(const std::string &run_id,
+                             const std::string &nuevo_nombre);
+
+  // Obtiene estadísticas de un estudiante específico
+  struct EstadisticasEstudiante {
+    int count_desayunos;
+    int count_almuerzos;
+    int count_total;
+    int porcentaje_asistencia; // Últimos 30 días
+  };
+  EstadisticasEstudiante
+  Obtener_Estadisticas_Estudiante(const std::string &run_id);
+
 private:
   // --- Miembros Privados ---
 

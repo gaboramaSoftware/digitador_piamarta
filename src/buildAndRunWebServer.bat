@@ -47,11 +47,10 @@ echo   INICIANDO SERVIDOR WEB CROW
 echo ==========================================
 echo.
 echo [+] Servidor web iniciando en puerto 18080
-echo [+] API endpoints disponibles:
-echo     - http://localhost:18080/api/dashboard
-echo     - http://localhost:18080/api/recent (incluye nombres completos)
 echo.
-echo [!] Para detener el servidor: Ctrl+C
+echo.
+echo [!] Link para ingresar: http://localhost:18080/ 
+echo [!] Para detener el servidor utilice: Ctrl+C
 echo.
 echo ==========================================
 echo.

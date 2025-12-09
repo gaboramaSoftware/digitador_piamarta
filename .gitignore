@@ -1,64 +1,63 @@
-# ==========================================
-# GITIGNORE PARA PROYECTO DIGITADOR
-# ==========================================
-
 # --- SECRETOS (CRÍTICO) ---
 .env
 .env.local
 .env.*.local
 
-# --- Compilados de C/C++ ---
-# No queremos subir archivos objeto ni ejecutables temporales
+# --- Visual Studio & IDEs (CRÍTICO PARA TU ERROR) ---
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.opensdf
+*.sdf
+
+# --- Compilados de C/C++ y Salidas ---
+# Archivos objeto, librerías estáticas y dinámicas
 *.o
 *.obj
 *.exe
 *.dll
 *.so
 *.dylib
+*.lib
+*.a
 
-# Excepción: DLLs de terceros en libs/ (descomenta si las necesitas)
-# !libs/bin/*.dll
-# !libs/x64lib/*.dll
-
-# --- Carpetas de Salida ---
-# Aquí es donde cae tu ejecutable final y los objetos intermedios
+# Carpetas de salida estándar y de Visual Studio
 bin/
 build/
 out/
 dist/
+Debug/
+Release/
+x64/
+x86/
 
-# --- Base de Datos Local (IMPORTANTE) ---
-# Ignorar la DB de desarrollo/pruebas
+# Archivos intermedios de linkeo y debugging (PESADOS)
+*.pdb
+*.idb
+*.ilk
+*.aps
+
+# --- Base de Datos Local ---
 *.db
 *.db-journal
 *.sqlite
 *.sqlite3
 
-# Pero SI queremos la carpeta BD/ con el código de SQLite
+# Excepciones: Queremos mantener la estructura de carpetas
 !BD/
 !src/BD/
 
-# --- IDEs y Sistema Operativo ---
-.vscode/
-.idea/
-*.swp
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# --- Node.js / Electron (Futuro) ---
+# --- Node.js / Web ---
 node_modules/
 npm-debug.log
 yarn-error.log
-dist-electron/
-release/
 
-# --- Archivos temporales de Windows ---
+# --- Archivos temporales del Sistema ---
 *.tmp
 *.temp
 *.log
 ~$*
-
-# --- Archivos de usuario específicos ---
-# Configuraciones locales que cada dev puede tener diferentes
-config.local.json
+Thumbs.db
+desktop.ini
