@@ -40,6 +40,14 @@ void runWebServer(DB_Backend &db) {
     return res;
   });
 
+  CROW_ROUTE(app, "/chart.main.js")
+  ([]() {
+    crow::response res;
+    res.set_static_file_info("web/chart.main.js");
+    res.set_header("Content-Type", "application/javascript");
+    return res;
+  });
+
   // ===== API ENDPOINTS =====
 
   CROW_ROUTE(app, "/api/dashboard")
@@ -109,6 +117,26 @@ void runWebServer(DB_Backend &db) {
     crow::json::wvalue result;
     result = std::move(list);
     return result;
+  });
+
+  // GET student history by run_id
+  CROW_ROUTE(app, "/api/students/<string>/history")
+  .methods("GET"_method)([&db](const std::string &run_id) {
+    auto historial = GetStudentHistory(db, run_id);
+    std::vector<crow::json::wvalue> records;
+    
+    for (const auto &reg : historial) {
+      crow::json::wvalue record;
+      record["fecha"] = reg.fecha;
+      record["hora"] = reg.hora;
+      record["tipo"] = reg.tipo;
+      record["estado"] = reg.estado;
+      records.push_back(std::move(record));
+    }
+    
+    crow::json::wvalue result = crow::json::wvalue::list();
+    result = std::move(records);
+    return crow::response(200, result);
   });
 
   // POST - Enroll new student WITH FINGERPRINT CAPTURE

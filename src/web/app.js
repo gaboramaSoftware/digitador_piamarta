@@ -1,4 +1,4 @@
-// App.js - MEJORADO CON UX DE CAPTURA DE HUELLA
+// App.js
 
 // Variables globales
 let allStudents = [];
@@ -10,7 +10,7 @@ let sensorAvailable = false;
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     updateDate();
-    checkSensorStatus(); // Verificar sensor al inicio
+    checkSensorStatus();
     fetchStats();
     fetchData();
 
@@ -189,23 +189,18 @@ function renderStudentsTable(students) {
     const tbody = document.getElementById('students-body');
 
     if (students.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">No hay estudiantes registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No hay estudiantes registrados</td></tr>';
         return;
     }
 
     let html = '';
 
     students.forEach(student => {
-        const statusBadge = student.activo ?
-            '<span class="badge badge-synced">Activo</span>' :
-            '<span class="badge badge-pending">Inactivo</span>';
-
         html += `
             <tr ondblclick="openStudentStats('${student.run}')" style="cursor: pointer;">
                 <td>${student.run}</td>
                 <td>${student.nombre}</td>
                 <td>${student.curso}</td>
-                <td>${statusBadge}</td>
                 <td>
                     <button class="btn-action" onclick="event.stopPropagation(); openStudentStats('${student.run}')" title="Ver estadísticas">📊</button>
                     <button class="btn-action btn-action-danger" onclick="event.stopPropagation(); openDeleteModalDirect('${student.run}')" title="Eliminar">🗑️</button>
@@ -220,7 +215,6 @@ function renderStudentsTable(students) {
 // ========== MODAL FUNCTIONS ==========
 
 function openEnrollModal() {
-    // Verificar estado del sensor antes de abrir el modal
     if (!sensorAvailable) {
         if (!confirm('⚠️ ADVERTENCIA: El sensor de huellas no está disponible.\n\n' +
             'No se podrá capturar la huella dactilar del estudiante.\n' +
@@ -278,6 +272,37 @@ function openDeleteModalDirect(run) {
     document.getElementById('deleteModal').style.display = 'flex';
 }
 
+// ========== FUNCIONES DEL MODAL DE EDICIÓN ==========
+
+function openEditModal() {
+    if (!currentStudent) {
+        console.error("No hay estudiante seleccionado para editar");
+        return;
+    }
+
+    document.getElementById('statsModal').style.display = 'none';
+
+    const nombreCompleto = currentStudent.nombre || "";
+    const partesNombre = nombreCompleto.split(" ");
+    
+    const nombre = partesNombre[0] || ""; 
+    const apellidos = partesNombre.slice(1).join(" ") || "";
+
+    document.getElementById('edit-run').value = currentStudent.run;
+    document.getElementById('edit-nombre').value = nombre;
+    document.getElementById('edit-apellido').value = apellidos;
+
+    document.getElementById('editarModal').style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('editarModal').style.display = 'none';    
+}
+
+function openDeleteModal() {
+    confirmDeleteStudent(); 
+}
+
 function confirmDeleteStudent() {
     if (!currentStudent) return;
 
@@ -288,6 +313,56 @@ function confirmDeleteStudent() {
 
 function closeDeleteModal() {
     document.getElementById('deleteModal').style.display = 'none';
+}
+
+// ========== Modal Detalle Estudiante ==========
+
+async function openDetalleModal() {  
+    if(!currentStudent) return;
+
+    // Rellenar información del estudiante
+    document.getElementById('detalle-student-name').textContent = currentStudent.nombre;
+    document.getElementById('detalle-student-run').textContent = `RUN: ${currentStudent.run}`;
+
+    // Abrir el modal
+    document.getElementById('detalleModal').style.display = 'flex';
+    
+    // Llenar la tabla del historial
+    const tbody = document.getElementById('detalle-body');
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center">Cargando datos...</td></tr>';
+
+    try {
+        // Llamada a la API real
+        const response = await fetch(`/api/students/${currentStudent.run}/history`);
+        const historial = await response.json();
+
+        // Renderizar la tabla
+        if (historial.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">No hay registros previos</td></tr>';
+        } else {
+            let html = '';
+            historial.forEach(reg => {
+                const badgeClass = reg.tipo === 'Almuerzo' ? 'badge-lunch' : 'badge-breakfast';
+                html += `
+                    <tr>
+                        <td>${reg.fecha}</td>
+                        <td>${reg.hora}</td>
+                        <td><span class="badge ${badgeClass}">${reg.tipo}</span></td>
+                        <td>${reg.estado}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+    } catch (error) {
+        console.error("Error cargando historial", error);
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center">Error al cargar datos</td></tr>';
+    }
+}
+
+function closeDetalleModal() {
+    document.getElementById('detalleModal').style.display = 'none';
 }
 
 // ========== FORM HANDLERS - ENROLAMIENTO CON HUELLA ==========
@@ -304,13 +379,11 @@ async function handleEnrollStudent(event) {
 
     const nombreCompleto = `${formData.nombre} ${formData.apellido}`;
 
-    // Cambiar UI del botón
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalBtnText = submitBtn.innerHTML;
     submitBtn.innerHTML = '<span class="icon">👆</span> Coloque su dedo en el sensor...';
     submitBtn.disabled = true;
 
-    // Mostrar mensaje en el modal
     const modalBody = document.querySelector('#enrollModal .modal-body');
     let statusDiv = document.getElementById('fingerprint-status');
 
@@ -334,7 +407,6 @@ async function handleEnrollStudent(event) {
     statusDiv.style.display = 'block';
 
     try {
-        // Esta llamada va a tardar ~5-15 segundos mientras espera el dedo
         const response = await fetch('/api/students', {
             method: 'POST',
             headers: {
@@ -362,10 +434,9 @@ async function handleEnrollStudent(event) {
                     `Huella: ${result.fingerprint_size} bytes capturados`);
                 closeEnrollModal();
                 fetchStudents();
-                checkSensorStatus(); // Re-verificar sensor
+                checkSensorStatus();
             }, 1000);
         } else {
-            // Manejar errores específicos
             let errorMsg = result.message || 'Error desconocido';
             let errorIcon = '❌';
 
@@ -395,11 +466,9 @@ async function handleEnrollStudent(event) {
         statusDiv.style.color = '#991B1B';
         alert('Error al conectar con el servidor. Verifique su conexión.');
     } finally {
-        // Restaurar botón
         submitBtn.innerHTML = originalBtnText;
         submitBtn.disabled = false;
 
-        // Ocultar mensaje de status después de 3 segundos si hubo error
         if (statusDiv.innerHTML.includes('❌') || statusDiv.innerHTML.includes('⚠️')) {
             setTimeout(() => {
                 statusDiv.style.display = 'none';
@@ -430,6 +499,7 @@ async function handleEditStudent(event) {
 
         if (response.ok) {
             alert('Estudiante actualizado exitosamente');
+            closeEditModal();
             closeStatsModal();
             fetchStudents();
         } else {

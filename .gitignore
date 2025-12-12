@@ -7,7 +7,7 @@
 .vs/
 .vscode/
 .idea/
-*.user
+*.user 
 *.suo
 *.opensdf
 *.sdf

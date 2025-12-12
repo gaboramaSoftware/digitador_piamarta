@@ -6,9 +6,10 @@
 
 #include <map>
 #include <mutex>
-#include <optional> // Para tu API de configuración
+#include <optional> 
 #include <string>
 #include <vector>
+#include <ctime>
 
 // Fwd-declare
 struct sqlite3;
@@ -107,6 +108,9 @@ public:
   };
   EstadisticasEstudiante
   Obtener_Estadisticas_Estudiante(const std::string &run_id);
+
+  // Obtener historial completo de un estudiante
+  std::vector<HistorialRacion> Obtener_Historial_Estudiante(const std::string &run_id);
 
 private:
   // --- Miembros Privados ---

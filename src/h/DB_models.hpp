@@ -107,3 +107,11 @@ struct RequestEnrolarUsuario {
     std::string curso_nuevo; 
     std::vector<uint8_t> template_huella;
 };
+
+// Un DTO para el historial de raciones de un estudiante
+struct HistorialRacion {
+    std::string fecha;   // "YYYY-MM-DD"
+    std::string hora;    // "HH:MM:SS"
+    std::string tipo;    // "Desayuno", "Almuerzo", "N/A"
+    std::string estado;  // "SINCRONIZADO" o "PENDIENTE"
+};

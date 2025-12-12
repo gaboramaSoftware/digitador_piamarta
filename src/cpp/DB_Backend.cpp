@@ -366,7 +366,6 @@ bool DB_Backend::Verificar_Racion_Doble(const std::string &run_id,
 bool DB_Backend::Guardar_Registro_Racion(const RegistroRacion &registro) {
   std::lock_guard<std::mutex> lock(db_mutex_);
 
-  // CORREGIDO: 'RegistrosRaciones' (PLURAL)
   const char *sql = "INSERT INTO RegistrosRaciones "
                     "(id_estudiante, fecha_servicio, tipo_racion, id_terminal, "
                     "hora_evento, estado_registro)"
@@ -405,7 +404,7 @@ bool DB_Backend::Guardar_Registro_Racion(const RegistroRacion &registro) {
   return exito;
 }
 
-// --- 5. API de Sincronización (El Servicio de Sync) ---
+// --- 5. API de Sincronización  ---
 
 std::vector<RegistroRacion> DB_Backend::Obtener_Registros_Pendientes() {
   std::lock_guard<std::mutex> lock(db_mutex_);
@@ -536,6 +535,65 @@ bool DB_Backend::Marcar_Registros_Sincronizados(
     _ejecutar_sql_script("ROLLBACK;");
     return false;
   }
+}
+
+// --- 8. API de Historial ---
+
+std::vector<HistorialRacion> DB_Backend::Obtener_Historial_Estudiante(const std::string &run_id) {
+  std::lock_guard<std::mutex> lock(db_mutex_);
+  std::vector<HistorialRacion> historial;
+
+  const char *sql = R"(
+    SELECT 
+      fecha_servicio,
+      hora_evento,
+      tipo_racion,
+      estado_registro
+    FROM RegistrosRaciones
+    WHERE id_estudiante = ?1
+    ORDER BY fecha_servicio DESC, hora_evento DESC
+    LIMIT 100;
+  )";
+
+  sqlite3_stmt *stmt;
+  if (sqlite3_prepare_v2(db_handle_, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+    sqlite3_bind_text(stmt, 1, run_id.c_str(), -1, SQLITE_TRANSIENT);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      HistorialRacion reg;
+      
+      const unsigned char *fecha_txt = sqlite3_column_text(stmt, 0);
+      reg.fecha = fecha_txt ? reinterpret_cast<const char *>(fecha_txt) : "";
+
+      int64_t epoch_ms = sqlite3_column_int64(stmt, 1);
+      time_t epoch_sec = epoch_ms / 1000;
+      struct tm *timeinfo = localtime(&epoch_sec);
+      char buffer[20];
+      strftime(buffer, sizeof(buffer), "%H:%M:%S", timeinfo);
+      reg.hora = buffer;
+
+      int tipo = sqlite3_column_int(stmt, 2);
+      switch (tipo) {
+        case 1:
+          reg.tipo = "Desayuno";
+          break;
+        case 2:
+          reg.tipo = "Almuerzo";
+          break;
+        default:
+          reg.tipo = "N/A";
+          break;
+      }
+
+      int estado = sqlite3_column_int(stmt, 3);
+      reg.estado = (estado == 1) ? "SINCRONIZADO" : "PENDIENTE";
+
+      historial.push_back(reg);
+    }
+  }
+  
+  sqlite3_finalize(stmt);
+  return historial;
 }
 
 // --- 6. API de Administración (Enrolamiento) ---

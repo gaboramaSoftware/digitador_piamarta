@@ -24,9 +24,6 @@
                 <a href="#" onclick="showSection('students')">
                     <span class="icon">👥</span> Estudiantes
                 </a>
-                <a href="#" onclick="showSection('reports')">
-                    <span class="icon">📄</span> Reportes
-                </a>
                 <a href="#" onclick="showSection('settings')">
                     <span class="icon">⚙️</span> Configuración
                 </a>
@@ -130,43 +127,42 @@
                 </div>
             </div>
 
-            <!-- Students Section - MEJORADO -->
+            <!-- Students Section -->
             <div id="students" class="section">
                 <!-- Actions Bar -->
                 <div class="students-actions-bar">
                     <button class="btn-primary" onclick="openEnrollModal()">
                         <span class="icon">➕</span> Enrolar Estudiante
                     </button>
-                    <div class="filter-group">
-                        <select id="course-filter" onchange="filterStudentsByCourse()">
-                            <option value="">Todos los cursos</option>
-                            <option value="1° Básico">1° Básico</option>
-                            <option value="2° Básico">2° Básico</option>
-                            <option value="3° Básico">3° Básico</option>
-                            <option value="4° Básico">4° Básico</option>
-                            <option value="5° Básico">5° Básico</option>
-                            <option value="6° Básico">6° Básico</option>
-                            <option value="7° Básico">7° Básico</option>
-                            <option value="8° Básico">8° Básico</option>
-                            <option value="1° Medio">1° Medio</option>
-                            <option value="2° Medio">2° Medio</option>
-                            <option value="3° Medio">3° Medio</option>
-                            <option value="4° Medio">4° Medio</option>
-                        </select>
-                        <button class="btn-exportar" onclick="exportStudentsToExcel()">
-                            <span class="icon">📊</span> Exportar a Excel
-                        </button>
-                    </div>
                 </div>
 
                 <!-- Students Table -->
                 <div class="card table-card">
                     <div class="card-header">
                         <h3>Gestión de Estudiantes</h3>
-                        <div class="search-box">
-                            <input type="text" id="search-students-input" placeholder="Buscar por nombre o RUN..."
-                                onkeyup="filterStudentsTable()">
-                        </div>
+                        <div class="card-header-filters">
+                            <div class="filter-group">
+                                <select id="course-filter" onchange="filterStudentsByCourse()">
+                                    <option value="">Todos los cursos</option>
+                                    <option value="1° Básico">1° Básico</option>
+                                    <option value="2° Básico">2° Básico</option>
+                                    <option value="3° Básico">3° Básico</option>
+                                    <option value="4° Básico">4° Básico</option>
+                                    <option value="5° Básico">5° Básico</option>
+                                    <option value="6° Básico">6° Básico</option>
+                                    <option value="7° Básico">7° Básico</option>
+                                    <option value="8° Básico">8° Básico</option>
+                                    <option value="1° Medio">1° Medio</option>
+                                    <option value="2° Medio">2° Medio</option>
+                                    <option value="3° Medio">3° Medio</option>
+                                    <option value="4° Medio">4° Medio</option>
+                                </select>
+                            </div>   
+                            <div class="search-box">
+                                <input type="text" id="search-students-input" placeholder="Buscar por nombre o RUN..."
+                                    onkeyup="filterStudentsTable()">
+                            </div>
+                        </div>                                         
                     </div>
                     <div class="table-responsive">
                         <table class="data-table">
@@ -175,7 +171,6 @@
                                     <th>RUN</th>
                                     <th>Nombre Completo</th>
                                     <th>Curso</th>
-                                    <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -191,10 +186,42 @@
 
             <!-- Reports Section -->
             <div id="reports" class="section">
-                <div class="card">
-                    <h2>Reportes</h2>
-                    <p>Próximamente...</p>
+                <!-- Recent Activity Table -->
+                <div class="card table-card">
+                    <div class="card-header">
+                        <h3>Registros Recientes</h3>
+                        <div class="card-actions">
+                            <div class="exportar">
+                                <button class="btn-exportar" onclick="exportToExcel()">Exportar a Excel</button>
+                            </div>
+                            <div class="search-box">
+                                <input type="text" id="search-input" placeholder="Buscar por nombre o RUN..."
+                                       onkeyup="filterTable()">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Estudiante</th>
+                                    <th>Curso</th>
+                                    <th>Ración</th>
+                                    <th>Hora</th>
+                                    <th>Terminal</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-body">
+                                <tr>
+                                    <td colspan="7" class="text-center">Cargando datos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+            </div>
             </div>
 
             <!-- Settings Section -->
@@ -273,6 +300,12 @@
                         <p id="stats-student-run">RUN: 12345678-9</p>
                         <p id="stats-student-curso">Curso: 1° Básico</p>
                     </div>
+                    <button class="btn-exportar" onclick="openDetalleModal()">
+                        <span class="icon">📊</span> Detalle Estudiante
+                    </button>
+                    <button class="btn-exportar" onclick="openEditModal()">
+                        <span class="icon">✏️</span> Editar Información
+                    </button>   
                 </div>
 
                 <div class="stats-summary">
@@ -301,39 +334,91 @@
                         <div class="stat-box-icon percentage">📈</div>
                         <div class="stat-box-info">
                             <p class="stat-box-value" id="stats-percentage">0%</p>
-                            <p class="stat-box-label">Asistencia (30 días)</p>
+                            <p class="stat-box-label">Asistencia Mensual</p>
                         </div>
                     </div>
+                </div>                
+            </div>
+        </div>
+    </div>
+
+    <!--MODAL DE REPORTES-->
+    <div id="detalleModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Historial de Alimentación</h2>
+                <button class="modal-close" onclick="closeDetalleModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="student-info-header" style="margin-bottom: 20px;">
+                    <div class="student-info-details">
+                        <h3 id="detalle-student-name">Nombre Estudiante</h3>
+                        <p id="detalle-student-run">RUN: ...</p>
+                    </div>
+                    <button class="btn-secondary" onclick="closeDetalleModal(); openStudentStats(currentStudent.run)">
+                        ⬅ Volver al Resumen
+                    </button>
                 </div>
 
-                <div class="form-section">
-                    <h4>Editar Información</h4>
-                    <form id="editStudentForm" onsubmit="handleEditStudent(event)">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="edit-nombre">Nombre</label>
-                                <input type="text" id="edit-nombre" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="edit-apellido">Apellido</label>
-                                <input type="text" id="edit-apellido" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-run">RUN (solo lectura)</label>
-                            <input type="text" id="edit-run" disabled>
-                        </div>
-                        <div class="modal-actions">
-                            <button type="button" class="btn-danger" onclick="confirmDeleteStudent()">
-                                <span class="icon">🗑️</span> Eliminar Estudiante
-                            </button>
-                            <button type="submit" class="btn-primary">Guardar Cambios</button>
-                        </div>
-                    </form>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Tipo Ración</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalle-body">
+                            <tr>
+                                <td colspan="4" class="text-center">Cargando historial...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
+
+    <!--Modal para editar informacion-->
+    <div id="editarModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Editar Datos de Usuario</h2>
+            <button class="modal-close" onclick="closeEditModal()">✕</button>
+        </div>
+        
+        <div class="modal-body">
+            <form id="editForm" onsubmit="handleEditStudent(event)">
+                
+                <div class="form-group">
+                    <label for="edit-run">RUN</label>
+                    <input type="text" id="edit-run" disabled 
+                           style="background-color: #f3f4f6; cursor: not-allowed;">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-nombre">Nombre</label>
+                    <input type="text" id="edit-nombre" required placeholder="Primer nombre">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-apellido">Apellidos</label>
+                    <input type="text" id="edit-apellido" required placeholder="Apellidos">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary" onclick="closeEditModal()">Guardar Cambios</button>
+                </div>
+            </form>
+            <button type="button" class="btn-danger" onclick="openDeleteModal()">
+                <span class="icon">🗑️</span> Eliminar Estudiante
+            </button>
+        </div>
+    </div>
+</div>
 
     <!-- Modal: Confirmación de Eliminación -->
     <div id="deleteModal" class="modal">
@@ -352,7 +437,7 @@
             </div>
         </div>
     </div>
-
+    <script src="chart.main.js"></script>
     <script src="app.js"></script>
 </body>
 
