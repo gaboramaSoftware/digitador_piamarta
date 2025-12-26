@@ -1,0 +1,687 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #ffffff;
+  overflow: hidden;
+  height: 100vh;
+}
+
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.screen.active {
+  display: block;
+  opacity: 1;
+}
+
+.content {
+  text-align: center;
+  padding: 40px;
+}
+
+#miTotem{
+  position: fixed;
+  top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Waiting Screen */
+/* touch-keyboard.css */
+.simple-keyboard {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #2c2c2c;
+  padding: 10px;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+  z-index: 10000;
+  display: none;
+}
+
+.hg-theme-ios .hg-button {
+  height: 50px;
+  font-size: 20px;
+  border-radius: 8px;
+  margin: 3px;
+  touch-action: manipulation; /* Mejor respuesta táctil */
+}
+
+.hg-theme-ios .hg-button:active {
+  background: #666;
+  transform: scale(0.95);
+}
+
+/* Inputs que usan el teclado */
+
+/* ============================================
+   TECLADO TÁCTIL ADAPTABLE (KIOSKO)
+   ============================================ */
+
+/* Contenedor del teclado */
+#keyboard-container, 
+.simple-keyboard {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #2c2c2c;
+  z-index: 10000;
+  display: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Teclado simple-keyboard (si lo usas) */
+.simple-keyboard.hg-theme-ios {
+  padding: 10px;
+  max-height: 50vh; /* Máximo 50% de la pantalla */
+  overflow-y: auto;
+}
+
+/* Teclas base - ADAPTABLES */
+.hg-theme-ios .hg-button,
+#virtual-keyboard button {
+  min-height: 60px; /* Mínimo para dedos */
+  font-size: 22px;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  margin: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background: #4a4a4a;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  flex: 1; /* Distribuye el espacio equitativamente */
+  min-width: 0; /* Permite que se reduzcan */
+}
+
+/* Efectos al tocar */
+.hg-theme-ios .hg-button:active,
+#virtual-keyboard button:active {
+  background: #666;
+  transform: scale(0.92);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Teclas especiales */
+.hg-theme-ios .hg-button.hg-red,
+#virtual-keyboard button.enter {
+  background: #e74c3c;
+}
+
+.hg-theme-ios .hg-button.hg-blue,
+#virtual-keyboard button.shift {
+  background: #3498db;
+}
+
+.hg-theme-ios .hg-button.hg-gray,
+#virtual-keyboard button.bksp {
+  background: #7f8c8d;
+}
+
+/* Tecla espacio más grande */
+.hg-theme-ios .hg-button.hg-standardBtn.hg-button-space,
+#virtual-keyboard button.space {
+  flex-grow: 3; /* Ocupa más espacio */
+  min-width: 150px;
+}
+
+/* ============================================
+   MEDIA QUERIES - RESPONSIVE
+   ============================================ */
+
+/* Pantallas pequeñas (menos de 768px) */
+@media (max-width: 768px) {
+  .hg-theme-ios .hg-button,
+  #virtual-keyboard button {
+    min-height: 55px;
+    font-size: 20px;
+    margin: 3px;
+    border-radius: 10px;
+  }
+  
+  .hg-theme-ios .hg-row,
+  .keyboard-row {
+    margin-bottom: 4px;
+  }
+}
+
+/* Pantallas muy pequeñas (menos de 480px) */
+@media (max-width: 480px) {
+  .hg-theme-ios .hg-button,
+  #virtual-keyboard button {
+    min-height: 50px;
+    font-size: 18px;
+    margin: 2px;
+    border-radius: 8px;
+  }
+  
+  .simple-keyboard {
+    padding: 8px;
+  }
+  
+  .keyboard-row {
+    margin-bottom: 3px;
+  }
+}
+
+/* ============================================
+   BOTÓN ENTRADA AL MENÚ
+   ============================================ */
+.menuEntrance-container {
+  position: fixed;
+  bottom: 25px;
+  left: 100px;  /* OPUESTO al botón del teclado (que está a la derecha) */
+  z-index: 9999;
+}
+
+.menuEntrance-button {
+  width: 180px;  /* Más ancho para mejor toque */
+  height: 70px;
+  border-radius: 35px;  /* Forma ovalada */
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);  /* Color morado distintivo */
+  color: white;
+  border: none;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  padding: 0 25px;
+  margin: 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.menuEntrance-button:hover {
+  background: linear-gradient(135deg, #8e44ad 0%, #470066 100%);
+  transform: scale(1.1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.menuEntrance-button:active {
+  transform: scale(0.95);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Ajuste para pantallas pequeñas */
+@media (max-width: 768px) {
+  .menuEntrance-button {
+    width: 150px;
+    height: 60px;
+    font-size: 16px;
+    bottom: 20px;
+    left: 20px;
+  }
+}
+
+/* Ajuste para pantallas muy pequeñas */
+@media (max-width: 480px) {
+  .menuEntrance-button {
+    width: 130px;
+    height: 55px;
+    font-size: 14px;
+    bottom: 15px;
+    left: 15px;
+  }
+}
+
+/* Pantallas grandes (más de 1200px) */
+@media (min-width: 1200px) {
+  .hg-theme-ios .hg-button,
+  #virtual-keyboard button {
+    min-height: 70px;
+    font-size: 24px;
+    margin: 5px;
+    border-radius: 14px;
+  }
+  
+  #keyboard-container,
+  .simple-keyboard {
+    padding: 15px;
+  }
+}
+
+/* Pantallas extra grandes (más de 1600px) */
+@media (min-width: 1600px) {
+  .hg-theme-ios .hg-button,
+  #virtual-keyboard button {
+    min-height: 80px;
+    font-size: 26px;
+    border-radius: 16px;
+  }
+  
+  .keyboard-row {
+    margin-bottom: 8px;
+  }
+}
+
+/* ============================================
+   ORIENTACIÓN HORIZONTAL
+   ============================================ */
+@media (orientation: landscape) {
+  /* Reducir altura del teclado en horizontal */
+  #keyboard-container,
+  .simple-keyboard {
+    max-height: 40vh;
+  }
+  
+  .hg-theme-ios .hg-button,
+  #virtual-keyboard button {
+    min-height: 50px;
+    font-size: 18px;
+  }
+  
+  /* Filas más compactas */
+  .hg-theme-ios .hg-row,
+  .keyboard-row {
+    margin-bottom: 3px;
+  }
+}
+
+/* ============================================
+   MEJORAS ESPECÍFICAS PARA VIRTUAL-KEYBOARD
+   ============================================ */
+#virtual-keyboard {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  background: #2c2c2c;
+  width: 100%;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: nowrap;
+  width: 100%;
+  margin-bottom: 5px;
+}
+
+/* Distribución proporcional de teclas */
+.keyboard-row:first-child {
+  /* Fila de números */
+  justify-content: space-between;
+}
+
+.keyboard-row:nth-child(2),
+.keyboard-row:nth-child(3) {
+  /* Filas de letras */
+  justify-content: center;
+}
+
+.keyboard-row:nth-child(4) {
+  /* Fila con shift y enter */
+  justify-content: space-between;
+}
+
+.keyboard-row:last-child {
+  /* Fila del espacio */
+  justify-content: center;
+}
+
+/* Ajustes específicos por tipo de tecla */
+#virtual-keyboard button[data-action="{bksp}"] {
+  min-width: 90px;
+  background: #7f8c8d;
+}
+
+#virtual-keyboard button[data-action="{enter}"] {
+  min-width: 90px;
+  background: #e74c3c;
+}
+
+#virtual-keyboard button[data-action="{shift}"] {
+  min-width: 90px;
+  background: #3498db;
+}
+
+#virtual-keyboard button[data-action="{space}"] {
+  min-width: 300px;
+  max-width: 80%;
+  flex-grow: 1;
+  background: #4a4a4a;
+}
+
+/* ============================================
+   ANIMACIONES SUAVES
+   ============================================ */
+#keyboard-container,
+.simple-keyboard {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+/* Entrada del teclado */
+.keyboard-enter {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.keyboard-enter-active {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Salida del teclado */
+.keyboard-exit {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.keyboard-exit-active {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* ============================================
+   INPUTS PARA TECLADO TÁCTIL
+   ============================================ */
+.keyboard-input {
+  font-size: 24px !important;
+  padding: 20px 15px !important;
+  width: 100%;
+  border: 3px solid #4a90e2 !important;
+  border-radius: 15px;
+  background: white !important;
+  color: #333 !important;
+  margin-bottom: 10px;
+  text-align: center;
+  caret-color: #4a90e2;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.keyboard-input:focus {
+  outline: none;
+  border-color: #2ecc71 !important;
+  box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.2) !important;
+}
+
+/* Placeholder más grande */
+.keyboard-input::placeholder {
+  font-size: 20px;
+  color: #999;
+  opacity: 0.7;
+}
+
+/* ============================================
+   BOTÓN TOGGLE DEL TECLADO
+   ============================================ */
+.keyboard-toggle-btn {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  font-size: 30px;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+.keyboard-toggle-btn:hover {
+  background: #357ae8;
+  transform: scale(1.15);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.keyboard-toggle-btn:active {
+  transform: scale(0.9);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Indicador de estado */
+.keyboard-toggle-btn.active {
+  background: #2ecc71;
+  animation: pulse 2s infinite;
+}
+
+/* ============================================
+   AJUSTES DE PANTALLA CUANDO APARECE TECLADO
+   ============================================ */
+body.keyboard-visible {
+  padding-bottom: 50vh; /* Espacio para el teclado */
+  transition: padding-bottom 0.3s ease;
+}
+
+/* Contenedor de contenido se ajusta */
+.content {
+  transition: margin-bottom 0.3s ease;
+}
+
+body.keyboard-visible .content {
+  margin-bottom: 20px;
+}
+
+/* ============================================
+   ESTADOS DE TECLA (FEEDBACK VISUAL)
+   ============================================ */
+.key-pressed {
+  animation: keyPress 0.2s ease;
+}
+
+@keyframes keyPress {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.85); }
+  100% { transform: scale(1); }
+}
+
+/* Indicador de mayúsculas activo */
+.shift-active {
+  background: #2980b9 !important;
+  box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.5) inset !important;
+}
+
+/* ============================================
+   HIGH CONTRAST MODE (ACCESIBILIDAD)
+   ============================================ */
+@media (prefers-contrast: high) {
+  #virtual-keyboard button,
+  .hg-theme-ios .hg-button {
+    border: 2px solid white;
+    color: white;
+    background: black;
+  }
+  
+  #virtual-keyboard button:active,
+  .hg-theme-ios .hg-button:active {
+    background: #333;
+  }
+}
+
+/* ============================================
+   REDUCED MOTION (ACCESIBILIDAD)
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  .hg-theme-ios .hg-button,
+  #virtual-keyboard button,
+  .keyboard-toggle-btn,
+  #keyboard-container,
+  .simple-keyboard {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/*--------------------------------------------------------------------*/
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+h1 {
+  font-size: 4rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.subtitle {
+  font-size: 2rem;
+  color: #a8dadc;
+  font-weight: 300;
+}
+
+/* Processing Screen */
+#screen-processing .spinner {
+  width: 100px;
+  height: 100px;
+  border: 8px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #4ecdc4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 40px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Approved Screen */
+.screen-approved {
+  background: linear-gradient(135deg, #0f4c3a 0%, #1b8f6a 100%);
+}
+
+.checkmark {
+  width: 150px;
+  height: 150px;
+  background: #2ecc71;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6rem;
+  margin: 0 auto 40px;
+  animation: scaleIn 0.5s ease-out;
+  box-shadow: 0 10px 40px rgba(46, 204, 113, 0.4);
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.ticket-info {
+  margin-top: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.student-name {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.student-run,
+.student-curso {
+  font-size: 2rem;
+  margin-bottom: 15px;
+  color: #a8f5e6;
+}
+
+.ration-type {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #ffd700;
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(255, 215, 0, 0.2);
+  border-radius: 10px;
+}
+
+/* Rejected Screen */
+.screen-rejected {
+  background: linear-gradient(135deg, #5c1a1a 0%, #8b2e2e 100%);
+}
+
+.crossmark {
+  width: 150px;
+  height: 150px;
+  background: #e74c3c;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6rem;
+  margin: 0 auto 40px;
+  animation: shake 0.5s ease-out;
+  box-shadow: 0 10px 40px rgba(231, 76, 60, 0.4);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.rejection-info {
+  margin-top: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.rejection-reason {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #ffcccb;
+  margin-bottom: 20px;
+}

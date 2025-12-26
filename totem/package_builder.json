@@ -1,0 +1,74 @@
+{
+    "name": "digitador-totem",
+    "version": "1.0.0",
+    "description": "Totem kiosk application for meal ticket verification",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "kiosk": "electron . --kiosk",
+        "build": "electron-builder --win --publish never",
+        "build-portable": "electron-builder --win portable --publish never",
+        "build-installer": "electron-builder --win nsis --publish never",
+        "pack": "electron-builder --dir",
+        "dist": "electron-builder"
+    },
+    "keywords": [
+        "electron",
+        "kiosk",
+        "fingerprint"
+    ],
+    "author": "Digitador",
+    "license": "ISC",
+    "build": {
+        "appId": "com.digitador.totem",
+        "productName": "Digitador Totem",
+        "files": [
+            "main.js",
+            "preload.js",
+            "renderer.js",
+            "index.html",
+            "styles.css",
+            "node_modules/**/*",
+            "package.json"
+        ],
+        "directories": {
+            "buildResources": "assets"
+        },
+        "win": {
+            "target": [
+                {
+                    "target": "portable",
+                    "arch": [
+                        "x64"
+                    ]
+                },
+                {
+                    "target": "nsis",
+                    "arch": [
+                        "x64"
+                    ]
+                }
+            ],
+            "certificateFile": null,
+            "certificatePassword": null,
+            "signingHashAlgorithms": [
+                "sha256"
+            ],
+            "sign": "./customSign.js"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "shortcutName": "Digitador Totem"
+        },
+        "portable": {
+            "artifactName": "Digitador-Totem-${version}.exe"
+        }
+    },
+    "devDependencies": {
+        "electron": "^39.2.6",
+        "electron-builder": "^25.1.0"
+    }
+}

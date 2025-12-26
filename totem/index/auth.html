@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticación</title>
+    <link rel="stylesheet" href="../styles/styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">
+            <div class="logo-icon">
+                <i>🔒</i>
+            </div>
+            <h1>Autenticación</h1>
+            <p>Ingrese sus credenciales para continuar</p>
+        </div>
+
+        <form class="auth-form" id="loginForm">
+            <div class="input-group">
+                <label for="username">
+                    <i>👤</i>
+                    Usuario
+                </label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    class="input-field" 
+                    placeholder="usuario@ejemplo.com"
+                    required
+                >
+            </div>
+
+            <div class="input-group">
+                <label for="password">
+                    <i>🔑</i>
+                    Contraseña
+                </label>
+                <div class="password-wrapper">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="input-field" 
+                        placeholder="••••••••"
+                        required
+                    >
+                    <button type="button" class="password-toggle" id="togglePassword">
+                        👁️
+                    </button>
+                </div>
+                <div class="remember-forgot">
+                    <label class="remember-me">
+                        <input type="checkbox" id="remember">
+                        Recordarme
+                    </label>
+                    <a href="#" class="forgot-link">¿Olvidó su contraseña?</a>
+                </div>
+            </div>
+
+            <button type="submit" class="auth-button" id="submitBtn">
+                Iniciar Sesión
+            </button>
+
+            <div class="divider">
+                o continuar con
+            </div>
+
+            <div class="alt-auth">
+                <button type="button" class="alt-button google">
+                    <i>G</i>
+                    Google
+                </button>
+                <button type="button" class="alt-button microsoft">
+                    <i>M</i>
+                    Microsoft
+                </button>
+            </div>
+        </form>
+
+        <div class="footer-links">
+            <a href="#">Registrarse</a>
+            •
+            <a href="#">Ayuda</a>
+            •
+            <a href="#">Términos</a>
+        </div>
+    </div>
+    <script src="../js/auth.js"></script>
+</body>
+</html>

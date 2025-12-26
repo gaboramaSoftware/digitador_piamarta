@@ -1,3 +1,5 @@
+//HardwareManager.cpp
+
 #include "HardwareManager.hpp"
 #include "DB_Backend.hpp"
 #include "SDK.hpp"

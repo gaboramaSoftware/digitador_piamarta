@@ -19,7 +19,7 @@ Start-Sleep -Seconds 5
 
 # 2. Start Totem (Electron App)
 Write-Host "2. Inicializando Totem..."
-$totemPath = "c:\Digitador\totem"
+$totemPath = "C:\Digitador\totem"
 if (Test-Path $totemPath) {
     # Using Start-Process to run npm start in a new window/background
     Start-Process -FilePath "npm" -ArgumentList "start" -WorkingDirectory $totemPath

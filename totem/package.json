@@ -2,7 +2,7 @@
     "name": "digitador-totem",
     "version": "1.0.0",
     "description": "Totem kiosk application for meal ticket verification",
-    "main": "main.js",
+    "main": "js/main.js",
     "scripts": {
         "start": "electron .",
         "kiosk": "electron . --kiosk"
@@ -16,5 +16,9 @@
     "license": "ISC",
     "devDependencies": {
         "electron": "^39.2.6"
+    },
+    "dependencies": {
+        "simple-keyboard": "^3.8.93",
+        "simple-keyboard-layouts": "^3.4.147"
     }
 }
