@@ -1,4 +1,4 @@
-// main.js - Versión mejorada con detección automática
+//main.js 
 const { app, BrowserWindow, screen, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -6,14 +6,25 @@ const path = require('path');
 let cppServer = null;
 
 const preloadPath = path.join(__dirname, 'preload.js'); 
+
 console.log('Preload path:', preloadPath);
 
 //iniciar servidor C++
-ipcMain.handle('start-cpp-server', async () => {
-    if (cppServer) return { success: true, message: 'Servidor ya está corriendo' };
-    
+ipcMain.handle('start-cpp-server', async () =>{
+    if(cppServer){
+        if (cppServer) return { success: true, message: 'Servidor ya está corriendo' };
+        console.log("El cerebro ya esta activo.");
+    }
+
     try {
-    cppServer = spawn('C:\\Digitador\\src\\build&Run.bat', ['--webserver']);
+        console.log("Iniciando Cerebro C++ vía CMD...");
+        cppServer = spawn(
+            'cmd.exe', 
+            ['/c', '"C:\\Digitador\\src\\build&Run.bat"', '--webserver'], 
+            { 
+                windowsVerbatimArguments: true
+            }
+        );
         
         cppServer.stdout.on('data', (data) => {
             console.log(`[C++]: ${data}`);
@@ -28,17 +39,15 @@ ipcMain.handle('start-cpp-server', async () => {
             cppServer = null;
         });
         
-        // Esperar un momento para que el servidor inicie
+        // Esperamos un poco para asegurar que el CMD arrancó el proceso hijo
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        return { success: true, message: 'Servidor iniciado' };
+        return { success: true, message: 'CMD iniciado correctamente' };
+
     } catch (error) {
+        console.error("Error en spawn:", error);
         return { success: false, message: error.message };
     }
-
-    app.on('before-quit', () => {
-        if (cppServer) cppServer.kill();
-    })
 });
 
 function getBestDisplay() {

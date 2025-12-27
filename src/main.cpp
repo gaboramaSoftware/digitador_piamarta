@@ -8,6 +8,8 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdbool.h>
 
 // Function to print the main menu
 void printMenu() {
@@ -15,10 +17,12 @@ void printMenu() {
   std::cout << "1) Enrolar alumno\n";
   std::cout << "2) Verificar huella\n";
   std::cout << "3) Procesar ticket\n";
-  std::cout << "4) Salir\n";
-  std::cout << "5) Borrar todos los datos\n";
+  std::cout << "4) Iniciar Servidor Web (Test)\n";
+  std::cout << "5) Salir\n";
   std::cout << "6) Ver ultimos registros\n";
-  std::cout << "7) Iniciar Servidor Web (Test)\n";
+  std::cout << "\n========= OPCION DE RIESGO =======================\n";
+  std::cout << "10) Borrar todos los datos";
+  std::cout << "\n==================================================\n";
   std::cout << "Seleccione una opción: ";
 }
 
@@ -65,33 +69,59 @@ int main(int argc, char *argv[]) {
     system("CLS");
 
     switch (opt) {
-    case 1:
+    case 1: //enrolar alumno
       menuEnroll(sensor, db);
       system("CLS");
       break;
-    case 2:
+    case 2: //verificar alumno
       menuVerify(sensor, db);
       system("CLS");
       break;
-    case 3:
+    case 3: //procesar ticket
       menuProcessTicket(sensor, db);
       system("CLS");
       break;
-    case 4:
-      running = false;
-      system("CLS");
-      break;
-    case 5:
-      db.borrarTodo();
-      break;
-    case 6:
-      menuShowRecent(db);
-      system("CLS");
-      break;
-    case 7:
+    case 4: //salir del sistema
       runWebServer(db);
       system("CLS");
       break;
+    case 5: //
+      menuShowRecent(db);
+      system("CLS");
+      break;
+    case 6: //salir del sistema
+      running = false;
+      system("CLS");
+      break;
+    case 10: // Borrar todos los datos
+    {
+      char r1;
+      std::cout << "\n ADVERTENCIA: ¿esta seguro de borrar TODOS los datos? (s/n): ";
+      std::cin >> r1;
+    
+      if (tolower(r1) == 's') {
+        std::cout << "¿SEGURO SEGURO? Escribe S otra vez: ";
+        char r2;
+        std::cin >> r2;
+        
+        if (tolower(r2) == 's') {
+            std::cout << "Borrando...\n";
+            db.borrarTodo();
+            std::cout << "Hecho.\n";
+      } else {
+            std::cout << "Cancelado.\n";
+        }
+      } else {
+        std::cout << "Cancelado.\n";
+      }
+    
+      std::cout << "\nEnter para continuar...";
+      std::cin.ignore();
+      std::cin.get();
+      system("CLS");
+      break;
+    }
+
     default:
       std::cout << "Opción inválida. Intente nuevamente.\n";
       system("CLS");

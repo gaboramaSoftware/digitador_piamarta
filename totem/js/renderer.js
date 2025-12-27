@@ -1,4 +1,42 @@
-// renderer.js
+// ==========================================
+// 1. FUNCIONES DE AYUDA Y CONEXIÓN (GLOBALES)
+// ==========================================
+
+// Definir Cmenu AQUÍ arriba para que exista siempre
+async function Cmenu(data) {
+    console.log("[API] Enviando a C++:", data);
+    const response = await fetch('http://localhost:18080/api/Cmenu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+// Auxiliar para espera
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Función "Ping" para esperar al servidor
+async function esperarConexionCerebro(maxIntentos = 15) {
+    for (let i = 0; i < maxIntentos; i++) {
+        try {
+            await fetch('http://localhost:18080/api/Cmenu', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ping: true }) 
+            });
+            return true; // ¡Conectado!
+        } catch (e) {
+            console.log(`Intento ${i + 1}/${maxIntentos}: Esperando servidor...`);
+            await wait(1000); 
+        }
+    }
+    return false; // Tiempo agotado
+}
+
+// ==========================================
+// 2. GESTIÓN DE ESTADO Y UI
+// ==========================================
 
 // State management
 let currentScreen = 'waiting';
@@ -6,9 +44,7 @@ let autoReturnTimeout = null;
 // Keyboard variables
 let isKeyboardVisible = false;
 let activeInput = null;
-let keyboard = null
-
-
+let keyboard = null;
 
 // Screen elements
 const screens = {
@@ -24,9 +60,7 @@ function showScreen(screenName) {
 
     // Hide all screens
     Object.values(screens).forEach(screen => {
-        if (screen) {
-            screen.classList.remove('active');
-        }
+        if (screen) screen.classList.remove('active');
     });
 
     // Show target screen
@@ -49,11 +83,13 @@ function autoReturnToWaiting(delayMs = 5000) {
     }, delayMs);
 }
 
-// Initialize touch keyboard
+// ==========================================
+// 3. TECLADO VIRTUAL
+// ==========================================
+
 function initTouchKeyboard() {
     console.log('[UI] Initializing touch keyboard...');
     
-    // Set up input focus tracking
     document.querySelectorAll('input[type="text"], input[type="number"]').forEach(input => {
         input.addEventListener('focus', () => {
             activeInput = input;
@@ -61,12 +97,13 @@ function initTouchKeyboard() {
         });
         
         input.addEventListener('blur', () => {
-            if (activeInput === input) {
-                activeInput = null;
-            }
+            // Pequeño delay para permitir clicks en el teclado
+            setTimeout(() => {
+                if (activeInput === input && !isKeyboardVisible) {
+                    activeInput = null;
+                }
+            }, 100);
         });
-
-        console.log('[UI] Touch keyboard initialized');
     });
     
     // Create keyboard container if it doesn't exist
@@ -81,13 +118,9 @@ function initTouchKeyboard() {
     createKeyboard();
 }
 
-// Create keyboard
 function createKeyboard() {
     if (keyboard) return;
     
-    console.log('[UI] Creating virtual keyboard...');
-    
-    // Create keyboard HTML structure
     const keyboardLayout = {
         'default': [
             '1 2 3 4 5 6 7 8 9 0 {bksp}',
@@ -99,303 +132,210 @@ function createKeyboard() {
     };
     
     const displayMappings = {
-        '{bksp}': '⌫',
-        '{shift}': '⇧',
-        '{enter}': '↵',
-        '{space}': 'Espacio'
+        '{bksp}': '⌫', '{shift}': '⇧', '{enter}': '↵', '{space}': 'Espacio'
     };
     
     const keyboardContainer = document.getElementById('keyboard-container');
-    if (!keyboardContainer) return;
-    
-    // Create keyboard HTML
     let keyboardHTML = '<div class="virtual-keyboard" id="virtual-keyboard">';
     
     keyboardLayout.default.forEach(row => {
         keyboardHTML += '<div class="keyboard-row">';
         const keys = row.split(' ');
-        
         keys.forEach(key => {
             const displayText = displayMappings[key] || key;
             const keyClass = key.startsWith('{') ? 'special-key ' + key.replace(/[{}]/g, '') : 'key';
-            
-            keyboardHTML += `
-                <button class="${keyClass}" data-action="${key}" type="button">
-                    ${displayText}
-                </button>
-            `;
+            keyboardHTML += `<button class="${keyClass}" data-action="${key}" type="button">${displayText}</button>`;
         });
-        
         keyboardHTML += '</div>';
     });
-    
     keyboardHTML += '</div>';
     keyboardContainer.innerHTML = keyboardHTML;
     
-    // Add event listeners to keys
+    // Listeners
     document.querySelectorAll('#virtual-keyboard button').forEach(button => {
-        button.addEventListener('click', handleKeyPress);
-        button.addEventListener('touchstart', (e) => {
+        const handleAction = (e) => {
             e.preventDefault();
             handleKeyPress(e);
-        });
+        };
+        button.addEventListener('click', handleAction);
+        button.addEventListener('touchstart', handleAction);
     });
     
     keyboard = {
-        show: () => {
-            keyboardContainer.style.display = 'block';
-            isKeyboardVisible = true;
-        },
-        hide: () => {
-            keyboardContainer.style.display = 'none';
-            isKeyboardVisible = false;
-        },
-        toggle: () => {
-            if (isKeyboardVisible) {
-                keyboard.hide();
-            } else {
-                keyboard.show();
-            }
-        }
+        show: () => { keyboardContainer.style.display = 'block'; isKeyboardVisible = true; },
+        hide: () => { keyboardContainer.style.display = 'none'; isKeyboardVisible = false; },
+        toggle: () => { isKeyboardVisible ? keyboard.hide() : keyboard.show(); }
     };
     
-    // Hide keyboard initially
     keyboard.hide();
-    
-    console.log('[UI] Touch keyboard initialized');
-
-
 }
 
-// Handle key press
 function handleKeyPress(event) {
     event.preventDefault();
     const button = event.currentTarget;
     const action = button.getAttribute('data-action');
     const keyText = button.textContent;
     
-    console.log('[UI] Key pressed:', action, keyText);
-    
     if (!activeInput) return;
-    
     const input = activeInput;
     
     switch(action) {
-        case '{bksp}':
-            // Backspace
-            input.value = input.value.slice(0, -1);
+        case '{bksp}': input.value = input.value.slice(0, -1); break;
+        case '{enter}': 
+            // SIMULAR ENTER REAL
+            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+            keyboard.hide(); 
             break;
-            
-        case '{enter}':
-            // Enter - simulate pressing Enter key
-            input.dispatchEvent(new KeyboardEvent('keydown', {
-                key: 'Enter',
-                keyCode: 13,
-                bubbles: true
-            }));
-            keyboard.hide();
-            break;
-            
-        case '{shift}':
-            // Toggle shift - you can implement shift logic here
-            toggleShift();
-            break;
-            
-        case '{space}':
-            // Space
-            input.value += ' ';
-            break;
-            
-        default:
-            // Regular key
-            input.value += keyText;
-            break;
+        case '{space}': input.value += ' '; break;
+        case '{shift}': toggleShift(); break;
+        default: input.value += keyText.trim(); break;
     }
     
-    // Trigger input event
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    
-    // Send to backend if needed
-    sendKeyToBackend(action, keyText);
+    // Opcional: sendKeyToBackend(action, keyText);
 }
 
 function toggleShift() {
-    // Toggle uppercase for letter keys
     const letterKeys = document.querySelectorAll('#virtual-keyboard .key:not(.special-key)');
     letterKeys.forEach(key => {
         const current = key.textContent;
         if (current.length === 1 && current.match(/[a-zñ]/i)) {
-            key.textContent = current === current.toLowerCase() 
-                ? current.toUpperCase() 
-                : current.toLowerCase();
+            key.textContent = current === current.toLowerCase() ? current.toUpperCase() : current.toLowerCase();
             key.setAttribute('data-action', key.textContent);
         }
     });
 }
 
-function showKeyboard() {
-    if (keyboard && !isKeyboardVisible) {
-        keyboard.show();
-    }
-}
+function showKeyboard() { if (keyboard && !isKeyboardVisible) keyboard.show(); }
+function hideKeyboard() { if (keyboard && isKeyboardVisible) keyboard.hide(); }
 
-function hideKeyboard() {
-    if (keyboard && isKeyboardVisible) {
-        keyboard.hide();
-    }
-}
-
-function sendKeyToBackend(action, keyText) {
-    // Send key press to backend through preload API
-    if (window.totem && window.totem.sendToBackend) {
-        window.totem.sendToBackend({
-            type: 'KEY_PRESS',
-            action: action,
-            key: keyText,
-            timestamp: Date.now(),
-            source: 'virtual-keyboard'
-        });
-    }
-}
-
-//funcion para conectar con el cerebro C++
-async function Cmenu(data) {
-    const response = await fetch('http://localhost:18080/api/Cmenu', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    return response.json();
-}
+// ==========================================
+// 4. COMUNICACIÓN BACKEND -> FRONTEND
+// ==========================================
 
 // Handle backend messages
-window.totem.onBackendMessage((data) => {
-    console.log('[RENDERER] Received:', data);
+if (window.totem && window.totem.onBackendMessage) {
+    window.totem.onBackendMessage((data) => {
+        console.log('[RENDERER] Received:', data);
 
-    // Status updates
-    if (data.status === 'ready') {
-        showScreen('waiting');
-    } else if (data.status === 'processing_finger') {
-        showScreen('processing');
-        hideKeyboard(); // Hide keyboard when processing fingerprint
-    }
+        // Status updates
+        if (data.status === 'ready') showScreen('waiting');
+        else if (data.status === 'processing_finger') {
+            showScreen('processing');
+            hideKeyboard();
+        }
 
-    // Ticket events
-    if (data.type === 'ticket') {
-        if (data.status === 'approved') {
-            // Show approved screen with student info
-            document.getElementById('approved-nombre').textContent = data.data.nombre || '';
-            document.getElementById('approved-run').textContent = data.data.run || '';
-            document.getElementById('approved-curso').textContent = data.data.curso || '';
-            document.getElementById('approved-racion').textContent = data.data.racion || '';
-
-            showScreen('approved');
+        // Ticket events
+        if (data.type === 'ticket') {
+            if (data.status === 'approved') {
+                document.getElementById('approved-nombre').textContent = data.data.nombre || '';
+                document.getElementById('approved-run').textContent = data.data.run || '';
+                document.getElementById('approved-curso').textContent = data.data.curso || '';
+                document.getElementById('approved-racion').textContent = data.data.racion || '';
+                showScreen('approved');
+            } else if (data.status === 'rejected_double') {
+                document.getElementById('rejected-reason').textContent = `Ya recibió ${data.data.racion || 'la ración'} hoy`;
+                document.getElementById('rejected-nombre').textContent = data.data.nombre || '';
+                showScreen('rejected');
+            } else if (data.status === 'rejected_time') {
+                document.getElementById('rejected-reason').textContent = 'Fuera del horario de servicio';
+                document.getElementById('rejected-nombre').textContent = data.data.nombre || '';
+                showScreen('rejected');
+            }
             autoReturnToWaiting(5000);
+        }
 
-        } else if (data.status === 'rejected_double') {
-            // Already ate this ration today
-            document.getElementById('rejected-reason').textContent =
-                `Ya recibió ${data.data.racion || 'la ración'} hoy`;
-            document.getElementById('rejected-nombre').textContent = data.data.nombre || '';
-
+        // No match / Error
+        if (data.type === 'no_match' || data.error) {
+            if (document.getElementById('rejected-reason')) {
+                document.getElementById('rejected-reason').textContent = data.error ? 'Error del sistema' : 'Huella no reconocida';
+            }
             showScreen('rejected');
-            autoReturnToWaiting(5000);
-
-        } else if (data.status === 'rejected_time') {
-            // Outside service hours
-            document.getElementById('rejected-reason').textContent =
-                'Fuera del horario de servicio';
-            document.getElementById('rejected-nombre').textContent = data.data.nombre || '';
-
-            showScreen('rejected');
-            autoReturnToWaiting(5000);
+            autoReturnToWaiting(4000);
         }
-    }
+    });
+}
 
-    // No match
-    if (data.type === 'no_match') {
-        if (document.getElementById('rejected-reason')) {
-            document.getElementById('rejected-reason').textContent =
-                'Huella no reconocida';
-        }
-        if (document.getElementById('rejected-nombre')) {
-            document.getElementById('rejected-nombre').textContent =
-                'Estudiante no registrado';
-        }
+// ==========================================
+// 5. INICIALIZACIÓN (DOMContentLoaded)
+// ==========================================
 
-        showScreen('rejected');
-        autoReturnToWaiting(4000);
-    }
-
-    // Errors
-    if (data.error) {
-        console.error('[ERROR]', data.error);
-        if (document.getElementById('rejected-reason')) {
-            document.getElementById('rejected-reason').textContent =
-                'Error del sistema';
-        }
-        if (document.getElementById('rejected-nombre')) {
-            document.getElementById('rejected-nombre').textContent =
-                'Por favor contacte al administrador';
-        }
-
-        showScreen('rejected');
-        autoReturnToWaiting(5000);
-    }
-});
-
-// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[RENDERER] Totem UI initialized');
     
     // Initialize screens
-    Object.values(screens).forEach(screen => {
-        if (screen) {
-            screen.classList.remove('active');
-        }
-    });
-    
-    // Start with waiting screen
+    Object.values(screens).forEach(screen => { if (screen) screen.classList.remove('active'); });
     showScreen('waiting');
     
     // Initialize keyboard
     initTouchKeyboard();
     
-    // Add click handler for manual keyboard toggle (optional)
+    // Toggle manual del teclado
     const toggleKeyboardBtn = document.getElementById('toggle-keyboard-btn');
     if (toggleKeyboardBtn) {
-        toggleKeyboardBtn.addEventListener('click', () => {
-            console.log('Click en botón, keyboard:', keyboard);
-            if (keyboard) {
-                keyboard.toggle();
+        toggleKeyboardBtn.addEventListener('click', () => { if (keyboard) keyboard.toggle(); });
+    }
+
+    // ---------------------------------------------------------
+    // LOGICA DEL BOTÓN DE MENÚ (CORREGIDA Y UNIFICADA)
+    // ---------------------------------------------------------
+    const btnMenu = document.getElementById('btn-menu');
+    
+    if (btnMenu) {
+        // Truco: Reemplazar el botón por un clon para borrar eventos viejos/duplicados
+        const newBtn = btnMenu.cloneNode(true);
+        btnMenu.parentNode.replaceChild(newBtn, btnMenu);
+
+        newBtn.addEventListener('click', async () => {
+            const textoOriginal = newBtn.innerText;
+            newBtn.innerText = "⏳ Conectando...";
+            newBtn.disabled = true;
+            newBtn.style.opacity = "0.7";
+
+            try {
+                console.log('1. [JS] Pidiendo a Electron que abra el CMD...');
+                const serverResult = await window.totem.startCppServer();
+                
+                if (!serverResult.success) {
+                    throw new Error("Fallo al iniciar CMD: " + serverResult.message);
+                }
+                
+                console.log('2. [JS] Esperando que el servidor HTTP responda...');
+                const conectado = await esperarConexionCerebro();
+
+                if (conectado) {
+                    console.log('3. [JS] Servidor listo. Pidiendo Menú...');
+                    const result = await Cmenu({ option: 1 });
+                    console.log('Respuesta del Menú:', result);
+                    
+                    newBtn.innerText = "✅ Sistema Activo";
+                    // Aquí podrías ocultar el botón
+                    newBtn.style.display = 'none'; 
+                } else {
+                    throw new Error("Tiempo de espera agotado. El servidor no respondió.");
+                }
+
+            } catch (error) {
+                console.error('Error Conexión:', error);
+                newBtn.innerText = "❌ Error";
+                alert(error.message);
+                
+                setTimeout(() => {
+                    newBtn.innerText = textoOriginal;
+                    newBtn.disabled = false;
+                    newBtn.style.opacity = "1";
+                }, 3000);
             }
         });
     }
-
-    //conectar a cerebro C++
-    document.getElementById('btn-menu').addEventListener('click', async () => {
-        
-        //primero iniciar servidor C
-        console.log('Iniciar servidor C++');
-        const serverResult = await window.totem.startCppServer();
-        console.log('Servidor: ', serverResult);
-        
-        try{
-            const result = await Cmenu({option: 1});
-            console.log('Respuesta:', result);
-        }catch (error){
-            console.error('Error conectando al servidor C++:', error);
-        }
-    });
     
-    // Hide keyboard when clicking outside
+    // Ocultar teclado al hacer clic fuera
     document.addEventListener('click', (e) => {
         if (isKeyboardVisible && 
-        !e.target.closest('#keyboard-container') && 
-        !e.target.closest('#toggle-keyboard-btn') &&  // ← AGREGAR ESTO
-        !e.target.closest('input[type="text"], input[type="number"]')) {
-        hideKeyboard();
-    }
+            !e.target.closest('#keyboard-container') && 
+            !e.target.closest('#toggle-keyboard-btn') && 
+            !e.target.closest('input')) {
+            hideKeyboard();
+        }
     });
 });

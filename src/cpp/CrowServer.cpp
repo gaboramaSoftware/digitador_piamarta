@@ -102,6 +102,49 @@ void runWebServer(DB_Backend &db) {
     return result;
   });
 
+  CROW_ROUTE(app, "/api/Cmenu")
+      .methods("POST"_method)([&db](const crow::request& req) {
+          crow::json::wvalue result;
+          
+          // 1. Intentamos leer el JSON que envia Electron
+          auto x = crow::json::load(req.body);
+          if (!x) {
+              return crow::response(400, "JSON Invalido");
+          }
+
+          // 2. CASO 1: PING (El chequeo de conexión)
+          // Esto es lo que usa tu función 'esperarConexionCerebro'
+          if (x.has("ping")) {
+              result["status"] = "connected";
+              result["message"] = "Cerebro C++ listo y escuchando";
+              return crow::response(result);
+          }
+
+          // 3. CASO 2: OPCIONES DE MENU
+          // Esto es lo que pasa cuando ya conectó y quieres hacer algo
+          if (x.has("option")) {
+              int option = x["option"].i();
+              
+              if (option == 1) {
+                  // LOGICA DE ENROLAMIENTO
+                  // Aquí es donde en el futuro llamarás a tu sensor
+                  std::cout << "[C++] Iniciando secuencia de enrolamiento..." << std::endl;
+                  
+                  result["status"] = "success";
+                  result["action"] = "open_enrollment"; 
+                  result["message"] = "Abriendo interfaz de huella...";
+                  
+                  // TODO: Aquí deberías llamar a tu función de hardware:
+                  // sensor.StartEnrollment();
+              }
+              else {
+                  result["status"] = "unknown_option";
+              }
+          }
+
+          return crow::response(result);
+      });
+
   // ===== STUDENT MANAGEMENT =====
 
   // GET all students
