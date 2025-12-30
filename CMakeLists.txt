@@ -19,6 +19,7 @@ set(SOURCES
     src/main.cpp
     src/cpp/DB_Backend.cpp
     src/cpp/Sensor.cpp
+    src/cpp/SensorWorker.cpp
     src/cpp/HardwareManager.cpp
     src/cpp/TemplateManager.cpp
     src/cpp/HeadlessManager.cpp
@@ -29,8 +30,6 @@ set(SOURCES
 
 add_executable(Digitador ${SOURCES})
 
-# --- CORRECCIÓN FORZADA ---
-# Apuntamos DIRECTO al archivo para que MinGW no se pierda
 target_link_libraries(Digitador PRIVATE 
     "${CMAKE_SOURCE_DIR}/src/libs/x64lib/libzkfp.lib"
     ws2_32
@@ -42,7 +41,6 @@ if(MINGW)
     target_link_options(Digitador PRIVATE 
         "-static-libgcc" 
         "-static-libstdc++"
-        # YA NO ESTÁ "-static" AQUÍ. ESO ERA LO QUE FALLABA.
     )
 endif()
 

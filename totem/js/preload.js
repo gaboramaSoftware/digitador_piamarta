@@ -1,23 +1,21 @@
-// preload.js 
+// C:\Digitador\totem\js\preload.js
 const { contextBridge, ipcRenderer } = require('electron');
 
+// API expuesta al renderer
 contextBridge.exposeInMainWorld('totem', {
-    onBackendMessage: (callback) => {
-        ipcRenderer.on('backend-message', (event, data) => {
-            console.log('[PRELOAD] Received from backend:', data);
-            callback(data);
-        });
-    },
+    // Abrir ventana de autenticación
+    openAuth: () => ipcRenderer.send('app:open-auth'),
     
-    sendToBackend: (data) => {
-        console.log('[PRELOAD] Sending to backend:', data);
-        ipcRenderer.send('frontend-message', data);
-    },
+    // Login
+    login: (rut, password) => ipcRenderer.invoke('auth:login', { rut, password }),
     
-    // Para desarrollo
-    isDev: () => {
-        return !process.argv.includes('--kiosk');
-    },
-    //iniciar servidor en C
-    startCppServer: () => ipcRenderer.invoke('start-cpp-server')
+    // Control de ventana
+    close: () => ipcRenderer.send('app:close'),
+    minimize: () => ipcRenderer.send('app:minimize'),
+    reload: () => ipcRenderer.send('app:reload'),
+    
+    // Información
+    platform: process.platform
 });
+
+console.log('[PRELOAD] Cargado correctamente');

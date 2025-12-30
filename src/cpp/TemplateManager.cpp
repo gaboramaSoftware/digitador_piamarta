@@ -13,6 +13,11 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <filesystem> 
+#include <windows.h>  
+#include <shellapi.h> 
+
 // Umbral de coincidencia biométrica (ajustable)
 static const int MATCH_THRESHOLD = 60;
 
@@ -358,6 +363,99 @@ void menuVerify(Sensor &sensor, DB_Backend &db) {
 // Ticket: verificación + lógica de ración (no doble) + registro
 // -----------------------------------------------------------------------------
 
+// Función auxiliar para guardar ticket en TXT
+void emitirTicket(const PerfilEstudiante& p, const std::string& fecha, const std::string& racion) {
+    // 1. Generar nombre de archivo único con la ruta correcta
+    std::stringstream ss;
+    // IMPORTANTE: Usar doble barra \\ para rutas en Windows
+    ss << "C:\\Digitador\\src\\tickets\\ticket_" << p.run_id << "_" << getNowEpochMs() << ".txt";
+    std::string filename = ss.str();
+
+    // 2. Crear archivo
+    std::ofstream file(filename);
+
+    if (file.is_open()) {
+        std::string contenido = 
+            "###############################################\n"
+            "           COLEGIO PIAMARTA            \n"
+            "          TICKET DE ALIMENTACION        \n\n"
+            "  RUN    : " + p.run_id + "-" + p.dv + "\n"
+            "  NOMBRE : " + p.nombre_completo + "\n"
+            "  CURSO  : " + p.curso + "\n"
+            "  FECHA  : " + fecha + "\n"
+            "  RACION : " + racion + "\n\n"
+            "      Verificado por Biometria Digitar      \n"
+            "###############################################\n";
+
+        // Guardar en archivo
+        file << contenido;
+        file.close();
+
+        // Feedback en consola
+        std::cout << "\n[SISTEMA] Ticket guardado en: " << filename << "\n";
+        std::cout << contenido << "\n";
+    } else {
+        std::cerr << "(-) Error: No se pudo crear el archivo de ticket en " << filename << "\n";
+        std::cerr << "    Verifique que la carpeta C:\\Digitador\\src\\tickets exista.\n";
+    }
+}
+
+void imprimirUltimoTicket() {
+    namespace fs = std::filesystem;
+    std::string carpeta = "C:\\Digitador\\src\\tickets";
+
+    fs::path ultimoArchivo;
+    fs::file_time_type ultimoTiempo = fs::file_time_type::min();
+    bool encontrado = false;
+
+    // 1. Buscar el archivo más reciente en la carpeta
+    try {
+        if (fs::exists(carpeta) && fs::is_directory(carpeta)) {
+            for (const auto& entry : fs::directory_iterator(carpeta)) {
+                if (entry.is_regular_file()) {
+                    if (entry.last_write_time() > ultimoTiempo) {
+                        ultimoTiempo = entry.last_write_time();
+                        ultimoArchivo = entry.path();
+                        encontrado = true;
+                    }
+                }
+            }
+        } else {
+            std::cerr << "(-) Error: La carpeta de tickets no existe.\n";
+            return;
+        }
+    } catch (const fs::filesystem_error& e) {
+        std::cerr << "(-) Error de sistema de archivos: " << e.what() << "\n";
+        return;
+    }
+
+    // 2. Ejecutar comando de impresión de Windows
+    if (encontrado) {
+        std::cout << "[SISTEMA] Enviando a imprimir: " << ultimoArchivo.filename() << "...\n";
+        
+        // ShellExecute con el verbo "print" envía el archivo a la impresora predeterminada
+        // sin abrir el editor de texto (o abriéndolo minimizado muy rápido).
+        HINSTANCE result = ShellExecuteA(
+            NULL,               // Handle ventana padre (NULL es escritorio)
+            "print",            // Verbo: QUEREMOS IMPRIMIR
+            ultimoArchivo.string().c_str(), // Ruta del archivo
+            NULL,               // Parámetros
+            NULL,               // Directorio de trabajo
+            SW_HIDE             // Mostrar ventana oculta (para que no moleste el Notepad)
+        );
+
+        // ShellExecute devuelve un valor > 32 si tuvo éxito
+        if ((intptr_t)result <= 32) {
+            std::cerr << "(-) Error al intentar imprimir. Código: " << (intptr_t)result << "\n";
+        } else {
+            std::cout << "(+) Orden de impresión enviada correctamente.\n";
+        }
+
+    } else {
+        std::cerr << "(-) No se encontraron tickets para imprimir.\n";
+    }
+}
+
 void menuProcessTicket(Sensor &sensor, DB_Backend &db) {
   std::string run;
   int bestScore = -1;
@@ -445,21 +543,14 @@ void menuProcessTicket(Sensor &sensor, DB_Backend &db) {
     std::cerr << "(-) Error al guardar registro de ración.\n";
     system("PAUSE");
     return;
-  }
+  };
 
-  // 5) "Ticket" en consola
-  std::cout << "###############################################\n";
-  std::cout << "  TICKET GENERADO\n";
-  std::cout << "  RUN   : " << perfil.run_id << "-" << perfil.dv << "\n";
-  std::cout << "  Nombre: " << perfil.nombre_completo << "\n";
-  std::cout << "  Curso : " << perfil.curso << "\n";
-  std::cout << "  Fecha : " << fecha << "\n";
-  std::cout << "  Ración: "
-            << (tipoRacion == TipoRacion::Desayuno        ? "Desayuno"
-                : cfg.tipo_racion == TipoRacion::Almuerzo ? "Almuerzo"
-                                                          : "N/A")
-            << "\n";
-  std::cout << "###############################################\n";
+  //emitir un ticket de cambio a la carpeta carpetas
+  emitirTicket(perfil, fecha, rationName);
+
+  // 6) IMPRIMIR TICKET (Mandar a la impresora física/default)
+  imprimirUltimoTicket();
+
   system("PAUSE");
 }
 

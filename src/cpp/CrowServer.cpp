@@ -1,14 +1,38 @@
-//CrowServer.c
+//CrowServer.cpp
 
 #include "CrowServer.hpp"
 #include "Endpoints.hpp"
+#include "SensorWorker.h"
+#include "TemplateManager.hpp"
 #include "crow_all.h"
-#include "sensor.h" // Para captura de huellas
 #include <iostream>
 #include <vector>
+#include <ctime>
+
+void emitirTicket(const PerfilEstudiante& p, const std::string& fecha, const std::string& racion);
+void imprimirUltimoTicket();
 
 void runWebServer(DB_Backend &db) {
   crow::SimpleApp app;
+
+  // =====================================================
+  // INICIALIZAR SENSOR WORKER (HILO DEDICADO)
+  // =====================================================
+  std::cout << "[CrowServer] ----------------------------------------" << std::endl;
+  std::cout << "[CrowServer] INICIANDO SENSOR WORKER..." << std::endl;
+  
+  // El worker maneja el sensor en un hilo separado
+  static SensorWorker sensorWorker;
+  
+  bool sensorActivo = sensorWorker.start();
+  
+  if (sensorActivo) {
+      std::cout << "[CrowServer] (+) SENSOR WORKER LISTO." << std::endl;
+  } else {
+      std::cerr << "[CrowServer] (-) ALERTA: Sensor no disponible." << std::endl;
+      std::cerr << "[CrowServer]     El servidor continuará, pero sin huella." << std::endl;
+  }
+  std::cout << "[CrowServer] ----------------------------------------" << std::endl;
 
   // ===== STATIC FILES =====
 
@@ -106,36 +130,25 @@ void runWebServer(DB_Backend &db) {
       .methods("POST"_method)([&db](const crow::request& req) {
           crow::json::wvalue result;
           
-          // 1. Intentamos leer el JSON que envia Electron
           auto x = crow::json::load(req.body);
           if (!x) {
               return crow::response(400, "JSON Invalido");
           }
 
-          // 2. CASO 1: PING (El chequeo de conexión)
-          // Esto es lo que usa tu función 'esperarConexionCerebro'
           if (x.has("ping")) {
               result["status"] = "connected";
               result["message"] = "Cerebro C++ listo y escuchando";
               return crow::response(result);
           }
 
-          // 3. CASO 2: OPCIONES DE MENU
-          // Esto es lo que pasa cuando ya conectó y quieres hacer algo
           if (x.has("option")) {
               int option = x["option"].i();
               
               if (option == 1) {
-                  // LOGICA DE ENROLAMIENTO
-                  // Aquí es donde en el futuro llamarás a tu sensor
                   std::cout << "[C++] Iniciando secuencia de enrolamiento..." << std::endl;
-                  
                   result["status"] = "success";
                   result["action"] = "open_enrollment"; 
                   result["message"] = "Abriendo interfaz de huella...";
-                  
-                  // TODO: Aquí deberías llamar a tu función de hardware:
-                  // sensor.StartEnrollment();
               }
               else {
                   result["status"] = "unknown_option";
@@ -144,6 +157,148 @@ void runWebServer(DB_Backend &db) {
 
           return crow::response(result);
       });
+
+  // ==============================================
+  // === VERIFICACION DE HUELLA - ENDPOINT ===
+  // ==============================================
+  CROW_ROUTE(app, "/api/verify_finger")
+  ([&db]() {
+    crow::json::wvalue result;
+    const int UMBRAL_MATCH = 70;
+
+    // Helper para crear respuesta JSON correctamente
+    auto make_json_response = [](int code, crow::json::wvalue& json) {
+        crow::response res(code, json.dump());
+        res.set_header("Content-Type", "application/json");
+        return res;
+    };
+
+    // 1. Verificar que el sensor esté listo
+    if (!sensorWorker.isReady()) {
+        result["status"] = "error";
+        result["message"] = "Sensor no disponible";
+        return make_json_response(503, result);
+    }
+
+    // 2. Solicitar captura de huella (BLOQUEANTE pero thread-safe)
+    CaptureResult captura = sensorWorker.captureBlocking(3000); // 3 segundos
+
+    if (captura.status == VerifyResult::NO_FINGER) {
+        // Timeout normal - no hay dedo
+        result["type"] = "no_match";
+        result["status"] = "waiting";
+        return make_json_response(200, result);
+    }
+    
+    if (captura.status != VerifyResult::SUCCESS) {
+        // Error del sensor
+        result["status"] = "error";
+        result["message"] = captura.errorMessage;
+        return make_json_response(500, result);
+    }
+
+    // 3. Tenemos huella - hacer identificación 1:N
+    std::map<std::string, std::vector<uint8_t>> templates_bd;
+    if (!db.Obtener_Todos_Templates(templates_bd)) {
+        result["status"] = "error";
+        result["message"] = "Error leyendo BD";
+        return make_json_response(500, result);
+    }
+
+    std::string run_encontrado = "";
+
+    for (const auto& [run, tmpl_bd] : templates_bd) {
+        // Match usando el worker (thread-safe)
+        int score = sensorWorker.matchBlocking(captura.templateData, tmpl_bd);
+        
+        if (score >= UMBRAL_MATCH) {
+            run_encontrado = run;
+            std::cout << "[verify_finger] Match encontrado: " << run 
+                      << " (score: " << score << ")" << std::endl;
+            break;
+        }
+    }
+
+    if (run_encontrado.empty()) {
+        result["type"] = "no_match";
+        result["status"] = "rejected";
+        return make_json_response(200, result);
+    }
+
+    // 4. LÓGICA DE NEGOCIO (Ticket)
+    PerfilEstudiante perfil;
+    db.Obtener_Perfil_Por_Run(run_encontrado, perfil);
+
+    time_t now = time(0);
+    tm *ltm = localtime(&now);
+    TipoRacion tipo_racion = (ltm->tm_hour < 11) ? TipoRacion::Desayuno : TipoRacion::Almuerzo;
+    std::string nombre_racion = (tipo_racion == TipoRacion::Desayuno) ? "Desayuno" : "Almuerzo";
+
+    char buffer[20];
+    strftime(buffer, 20, "%Y-%m-%d", ltm);
+    std::string fecha_hoy(buffer);
+
+    bool ya_comio = db.Verificar_Racion_Doble(run_encontrado, fecha_hoy, tipo_racion);
+
+    if (ya_comio) {
+        result["type"] = "ticket";
+        result["status"] = "rejected_double";
+        crow::json::wvalue data;
+        data["nombre"] = perfil.nombre_completo;
+        data["racion"] = nombre_racion;
+        result["data"] = std::move(data);
+    } else {
+        RegistroRacion nuevoReg;
+        nuevoReg.id_estudiante = run_encontrado;
+        nuevoReg.fecha_servicio = fecha_hoy;
+        nuevoReg.tipo_racion = tipo_racion;
+        nuevoReg.id_terminal = "TOTEM-01";
+        nuevoReg.hora_evento = (long long)now * 1000;
+        nuevoReg.estado_registro = EstadoRegistro::PENDIENTE;
+
+        if (db.Guardar_Registro_Racion(nuevoReg)) {
+            std::cout << "[CrowServer]: Registro guardado. Generando Ticket Fisico" << std::endl;
+            emitirTicket(perfil, fecha_hoy, nombre_racion);
+            imprimirUltimoTicket();
+            //--------------------------------
+            result["type"] = "ticket";
+            result["status"] = "approved";
+            crow::json::wvalue data;
+            data["nombre"] = perfil.nombre_completo;
+            data["curso"] = perfil.curso;
+            data["run"] = perfil.run_id;
+            data["racion"] = nombre_racion;
+            result["data"] = std::move(data);
+        } else {
+            result["status"] = "error";
+            result["message"] = "Error guardando en BD";
+        }
+    }
+
+    std::cout << "[verify_finger] Enviando respuesta: " << result.dump() << std::endl;
+    return make_json_response(200, result);
+  });
+
+  // ==============================================
+  // === ESTADO DEL SENSOR ===
+  // ==============================================
+  CROW_ROUTE(app, "/api/sensor/status")
+  ([]() {
+    crow::json::wvalue result;
+    
+    bool ready = sensorWorker.isReady();
+    bool running = sensorWorker.isRunning();
+    
+    result["available"] = ready;
+    result["worker_running"] = running;
+    result["message"] = ready ? "Sensor conectado y listo" : 
+                        (running ? "Worker activo pero sensor no disponible" : 
+                                   "Worker no iniciado");
+    
+    crow::response res(200, result.dump());
+    res.set_header("Content-Type", "application/json");
+    return res;
+  });
 
   // ===== STUDENT MANAGEMENT =====
 
@@ -199,64 +354,31 @@ void runWebServer(DB_Backend &db) {
         std::cout << "[CrowServer] Iniciando enrolamiento de: " << nombre
                   << " (RUN: " << run << ")" << std::endl;
 
-        // --- CAPTURA DE HUELLA CON HARDWARE ---
-        std::vector<unsigned char> huella_capturada;
-
-        try {
-          Sensor sensor;
-
-          // Inicializar el sensor
-          if (!sensor.initSensor()) {
-            std::cerr << "[CrowServer] ERROR: Sensor no disponible"
-                      << std::endl;
+        // Verificar sensor
+        if (!sensorWorker.isReady()) {
             crow::json::wvalue error;
             error["success"] = false;
-            error["message"] = "Error: Sensor de huellas no disponible. "
-                               "Verifique la conexión USB.";
-            error["error_code"] = "SENSOR_INIT_FAILED";
+            error["message"] = "Sensor de huellas no disponible";
+            error["error_code"] = "SENSOR_NOT_READY";
             return crow::response(503, error);
-          }
-
-          std::cout << "[CrowServer] Sensor inicializado. Esperando huella..."
-                    << std::endl;
-
-          // Configurar timeout
-          sensor.setTimeout(15000);    // 15 segundos
-          sensor.setPollInterval(200); // Chequear cada 200ms
-
-          // CAPTURAR HUELLA (función bloqueante)
-          bool captura_exitosa =
-              sensor.capturenCreateTemplate(huella_capturada);
-
-          // Cerrar el sensor
-          sensor.closeSensor();
-
-          if (!captura_exitosa || huella_capturada.empty()) {
-            std::cerr << "[CrowServer] ERROR: No se pudo capturar la huella"
-                      << std::endl;
-            crow::json::wvalue error;
-            error["success"] = false;
-            error["message"] =
-                "No se detectó huella en el sensor. Por favor, coloque su dedo "
-                "correctamente e intente de nuevo.";
-            error["error_code"] = "FINGERPRINT_TIMEOUT";
-            return crow::response(408, error);
-          }
-
-          std::cout << "[CrowServer] Huella capturada exitosamente. Tamaño: "
-                    << huella_capturada.size() << " bytes" << std::endl;
-
-        } catch (const std::exception &e) {
-          std::cerr << "[CrowServer] EXCEPCIÓN al capturar huella: " << e.what()
-                    << std::endl;
-          crow::json::wvalue error;
-          error["success"] = false;
-          error["message"] = "Error interno al procesar la huella";
-          error["error_code"] = "SENSOR_EXCEPTION";
-          return crow::response(500, error);
         }
 
-        // --- GUARDAR EN BASE DE DATOS ---
+        // Capturar huella usando el worker
+        std::cout << "[CrowServer] Esperando huella..." << std::endl;
+        CaptureResult captura = sensorWorker.captureBlocking(15000); // 15 segundos para enrolamiento
+
+        if (captura.status != VerifyResult::SUCCESS) {
+            crow::json::wvalue error;
+            error["success"] = false;
+            error["message"] = (captura.status == VerifyResult::NO_FINGER) 
+                ? "No se detectó huella. Intente de nuevo."
+                : "Error del sensor: " + captura.errorMessage;
+            error["error_code"] = "FINGERPRINT_CAPTURE_FAILED";
+            return crow::response(408, error);
+        }
+
+        std::cout << "[CrowServer] Huella capturada. Tamaño: " 
+                  << captura.templateData.size() << " bytes" << std::endl;
 
         // Extraer dígito verificador del RUN
         char dv = 'K';
@@ -267,33 +389,28 @@ void runWebServer(DB_Backend &db) {
           }
         }
 
-        // Crear request con la huella REAL capturada
+        // Crear request con la huella capturada
         RequestEnrolarUsuario request;
         request.run_nuevo = run;
         request.dv_nuevo = dv;
         request.nombre_nuevo = nombre;
         request.curso_nuevo = curso;
-        request.template_huella = huella_capturada;
+        request.template_huella = captura.templateData;
 
         // Guardar en la base de datos
         bool success = db.Enrolar_Estudiante_Completo(request);
 
         if (success) {
-          std::cout << "[CrowServer] ✓ Estudiante enrolado exitosamente"
-                    << std::endl;
+          std::cout << "[CrowServer] ✓ Estudiante enrolado exitosamente" << std::endl;
           crow::json::wvalue result;
           result["success"] = true;
-          result["message"] =
-              "Estudiante enrolado exitosamente con huella dactilar";
-          result["fingerprint_size"] = (int)huella_capturada.size();
+          result["message"] = "Estudiante enrolado exitosamente";
+          result["fingerprint_size"] = (int)captura.templateData.size();
           return crow::response(200, result);
         } else {
-          std::cerr << "[CrowServer] ERROR: Fallo al guardar en BD"
-                    << std::endl;
           crow::json::wvalue error;
           error["success"] = false;
-          error["message"] =
-              "Error al guardar el estudiante (RUN duplicado o error de BD)";
+          error["message"] = "Error al guardar (RUN duplicado o error de BD)";
           error["error_code"] = "DATABASE_ERROR";
           return crow::response(500, error);
         }
@@ -355,30 +472,6 @@ void runWebServer(DB_Backend &db) {
     return result;
   });
 
-  // ===== SENSOR STATUS =====
-
-  CROW_ROUTE(app, "/api/sensor/status")
-  ([]() {
-    crow::json::wvalue result;
-
-    try {
-      Sensor sensor;
-      bool sensor_ok = sensor.initSensor();
-      sensor.closeSensor();
-
-      result["available"] = sensor_ok;
-      result["message"] =
-          sensor_ok ? "Sensor conectado y listo" : "Sensor no disponible";
-
-      return crow::response(200, result);
-    } catch (const std::exception &e) {
-      result["available"] = false;
-      result["message"] = "Error al verificar sensor";
-      result["error"] = e.what();
-      return crow::response(500, result);
-    }
-  });
-
   // ===== EXPORT =====
 
   // Export students to CSV
@@ -424,7 +517,11 @@ void runWebServer(DB_Backend &db) {
 
   // ===== START SERVER =====
 
-  std::cout
-      << "Abriendo servidor en puerto: 18080... (Presiona Ctrl+C para parar)\n";
+  std::cout << "[CrowServer] Iniciando en puerto 18080..." << std::endl;
+  std::cout << "[CrowServer] Presiona Ctrl+C para detener." << std::endl;
+  
   app.port(18080).multithreaded().run();
+  
+  // Cuando el servidor se detenga, detener el worker
+  sensorWorker.stop();
 }

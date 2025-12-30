@@ -1,0 +1,12 @@
+###############################################
+           COLEGIO PIAMARTA            
+          TICKET DE ALIMENTACION        
+
+  RUN    : 254087378-8
+  NOMBRE : Esteban Monsalve Trujillo
+  CURSO  : 7° Básico
+  FECHA  : 2025-12-29
+  RACION : Almuerzo
+
+      Verificado por Biometria Digitar      
+###############################################

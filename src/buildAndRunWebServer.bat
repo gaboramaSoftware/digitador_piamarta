@@ -25,8 +25,8 @@ if %errorlevel% neq 0 (
 echo [OK] SQLite compilado correctamente.
 echo.
 
-:: 3. COMPILAR PROYECTO C++ Y LINKEAR SQLITE
-set CPP_SOURCES=main.cpp cpp/DB_Backend.cpp cpp/Sensor.cpp cpp/HardwareManager.cpp cpp/TemplateManager.cpp cpp/HeadlessManager.cpp cpp/CrowServer.cpp cpp/Endpoints.cpp
+:: 3. COMPILAR PROYECTO C++ Y LINKEAR SQLITE (AGREGADO: SensorWorker.cpp)
+set CPP_SOURCES=main.cpp cpp/DB_Backend.cpp cpp/Sensor.cpp cpp/SensorWorker.cpp cpp/HardwareManager.cpp cpp/TemplateManager.cpp cpp/HeadlessManager.cpp cpp/CrowServer.cpp cpp/Endpoints.cpp
 set CPP_FLAGS=-std=c++17 -pthread -static-libgcc -static-libstdc++ -DASIO_STANDALONE -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0601
 
 echo [2/2] Compilando proyecto C++...

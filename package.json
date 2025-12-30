@@ -1,7 +1,7 @@
 {
   "name": "digitador",
   "version": "1.0.0",
-  "main": "main.js",
+  "main": "main_OLD.js",
   "scripts": {
     "start": "electron ."
   },

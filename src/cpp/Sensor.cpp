@@ -1,11 +1,9 @@
-// sensor.cpp
+// src/cpp/Sensor.cpp
 
 #include "sensor.h"
-
 #include <chrono>
 #include <iostream>
 #include <thread>
-
 
 // Si no lo tienes definido en otro lado, define el tamaño máximo de template
 #ifndef MAX_TEMPLATE_SIZE
@@ -126,20 +124,18 @@ bool Sensor::closeSensor() {
 }
 
 // -----------------------------------------------------------------------------
-// Capturar huella y crear template
+// Capturar huella y crear template (VERSION LIMPIA PARA SERVIDOR)
 // -----------------------------------------------------------------------------
 bool Sensor::capturenCreateTemplate(std::vector<unsigned char> &templateData) {
   if (!m_isInitialized) {
-    std::cerr << "(-) Error: el sensor no está inicializado." << std::endl;
     return false;
   }
 
   if (m_imageBuffer.empty()) {
-    std::cerr << "(-) Error: buffer de imagen no inicializado." << std::endl;
     return false;
   }
 
-  std::cout << ">>> COLOQUE SU DEDO EN EL SENSOR <<<" << std::endl;
+  // NOTA: No imprimimos texto para no ensuciar la consola del servidor
 
   unsigned char tempTemplateBuffer[MAX_TEMPLATE_SIZE];
 
@@ -152,13 +148,13 @@ bool Sensor::capturenCreateTemplate(std::vector<unsigned char> &templateData) {
   unsigned int templateSize = 0;
 
   while (std::chrono::steady_clock::now() < deadline) {
-    templateSize = MAX_TEMPLATE_SIZE; // SIEMPRE resetear antes de llamar al SDK
+    templateSize = MAX_TEMPLATE_SIZE; // SIEMPRE resetear
 
     unsigned int imageSize = static_cast<unsigned int>(m_imageBuffer.size());
 
     ret = ZKFPM_AcquireFingerprint(
         m_deviceHandle,
-        m_imageBuffer.data(), // <--- ojo: .data(), no el vector entero
+        m_imageBuffer.data(), 
         imageSize, tempTemplateBuffer, &templateSize);
 
     if (ret == ZKFP_ERR_OK) {
@@ -168,50 +164,27 @@ bool Sensor::capturenCreateTemplate(std::vector<unsigned char> &templateData) {
 
 #ifdef ZKFP_ERR_NO_FINGER
     if (ret == ZKFP_ERR_NO_FINGER) {
-      // No hay dedo: feedback + espera
-      std::cout << "." << std::flush;
+      // No hay dedo: Esperamos un poco y reintentamos.
       std::this_thread::sleep_for(std::chrono::milliseconds(m_pollIntervalMs));
       continue;
     } else {
-      // Otro error distinto a OK/NO_FINGER: abortamos
-      std::cerr << "\n(-) Error al capturar huella, código: " << ret
-                << std::endl;
+      // Error real de lectura
       return false;
     }
 #else
-    // Si NO tenemos NO_FINGER en el SDK, tratamos todo != OK como "no hay dedo
-    // / mala lectura"
-    std::cout << "." << std::flush;
+    // Fallback si no está definida la macro
     std::this_thread::sleep_for(std::chrono::milliseconds(m_pollIntervalMs));
     continue;
 #endif
   }
 
   if (!success) {
-    std::cout << std::endl;
-    std::cerr << "(-) Tiempo agotado: no se detectó dedo en el sensor."
-              << std::endl;
+    // Timeout normal (nadie puso el dedo), retornamos false silenciosamente
     return false;
   }
 
-  // Momento en que se capturó una huella válida
-  auto captureTime = std::chrono::steady_clock::now();
-
   // Copiar el template al vector de salida
   templateData.assign(tempTemplateBuffer, tempTemplateBuffer + templateSize);
-
-  std::cout << "\n(+) Huella capturada. Tamaño del template: " << templateSize
-            << " bytes." << std::endl;
-
-  // Pequeño delay mínimo para UX
-  constexpr auto MIN_DELAY = std::chrono::milliseconds(500); // 0.5 segundos
-  std::cout << "Procesando, por favor espere..." << std::endl;
-
-  auto now = std::chrono::steady_clock::now();
-  if (now < captureTime + MIN_DELAY) {
-    auto remaining = (captureTime + MIN_DELAY) - now;
-    std::this_thread::sleep_for(remaining);
-  }
 
   return true;
 }
@@ -291,7 +264,5 @@ bool Sensor::acquireFingerprintImmediate(
     return true;
   }
 
-  // Si es NO_FINGER o cualquier otro error, retornamos false inmediatamente.
-  // No imprimimos nada para no ensuciar el log en el loop rápido.
   return false;
 }

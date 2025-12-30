@@ -18,8 +18,8 @@ void printMenu() {
   std::cout << "2) Verificar huella\n";
   std::cout << "3) Procesar ticket\n";
   std::cout << "4) Iniciar Servidor Web (Test)\n";
-  std::cout << "5) Salir\n";
-  std::cout << "6) Ver ultimos registros\n";
+  std::cout << "5) Ver ultimos registros\n";
+  std::cout << "6) Salir\n";
   std::cout << "\n========= OPCION DE RIESGO =======================\n";
   std::cout << "10) Borrar todos los datos";
   std::cout << "\n==================================================\n";
