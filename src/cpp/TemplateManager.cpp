@@ -363,11 +363,10 @@ void menuVerify(Sensor &sensor, DB_Backend &db) {
 // Ticket: verificación + lógica de ración (no doble) + registro
 // -----------------------------------------------------------------------------
 
-// Función auxiliar para guardar ticket en TXT
+
 void emitirTicket(const PerfilEstudiante& p, const std::string& fecha, const std::string& racion) {
-    // 1. Generar nombre de archivo único con la ruta correcta
+    // 1. Generar nombre de archivo único
     std::stringstream ss;
-    // IMPORTANTE: Usar doble barra \\ para rutas en Windows
     ss << "C:\\Digitador\\src\\tickets\\ticket_" << p.run_id << "_" << getNowEpochMs() << ".txt";
     std::string filename = ss.str();
 
@@ -375,31 +374,27 @@ void emitirTicket(const PerfilEstudiante& p, const std::string& fecha, const std
     std::ofstream file(filename);
 
     if (file.is_open()) {
+        // CORREGIDO: Se agregan los signos '+' al final para unir las lineas
         std::string contenido = 
-            "###############################################\n"
-            "           COLEGIO PIAMARTA            \n"
-            "          TICKET DE ALIMENTACION        \n\n"
-            "  RUN    : " + p.run_id + "-" + p.dv + "\n"
-            "  NOMBRE : " + p.nombre_completo + "\n"
-            "  CURSO  : " + p.curso + "\n"
-            "  FECHA  : " + fecha + "\n"
-            "  RACION : " + racion + "\n\n"
-            "      Verificado por Biometria Digitar      \n"
-            "###############################################\n";
+            std::string("             TICKET             \n") +
+            "NOMBRE: " + p.nombre_completo.substr(0, 24) + "\n" +
+            "CURSO:  " + p.curso + "\n" +
+            "FECHA:  " + fecha + "\n" +
+            "RACION: " + racion ; 
 
         // Guardar en archivo
         file << contenido;
         file.close();
 
-        // Feedback en consola
         std::cout << "\n[SISTEMA] Ticket guardado en: " << filename << "\n";
-        std::cout << contenido << "\n";
     } else {
-        std::cerr << "(-) Error: No se pudo crear el archivo de ticket en " << filename << "\n";
-        std::cerr << "    Verifique que la carpeta C:\\Digitador\\src\\tickets exista.\n";
+        std::cerr << "(-) Error: No se pudo crear el archivo de ticket.\n";
     }
 }
+// Necesitas este include extra arriba si no lo tienes
+#include <fstream> 
 
+// Reemplaza toda la función imprimirUltimoTicket por esto:
 void imprimirUltimoTicket() {
     namespace fs = std::filesystem;
     std::string carpeta = "C:\\Digitador\\src\\tickets";
@@ -408,7 +403,7 @@ void imprimirUltimoTicket() {
     fs::file_time_type ultimoTiempo = fs::file_time_type::min();
     bool encontrado = false;
 
-    // 1. Buscar el archivo más reciente en la carpeta
+    // 1. Buscar el archivo más reciente (Esto nunca falló)
     try {
         if (fs::exists(carpeta) && fs::is_directory(carpeta)) {
             for (const auto& entry : fs::directory_iterator(carpeta)) {
@@ -420,39 +415,33 @@ void imprimirUltimoTicket() {
                     }
                 }
             }
-        } else {
-            std::cerr << "(-) Error: La carpeta de tickets no existe.\n";
-            return;
         }
     } catch (const fs::filesystem_error& e) {
-        std::cerr << "(-) Error de sistema de archivos: " << e.what() << "\n";
-        return;
+        std::cerr << "(-) Error FS: " << e.what() << "\n"; return;
     }
 
-    // 2. Ejecutar comando de impresión de Windows
+    // 2. LA PARTE IMPORTANTE: ShellExecute
     if (encontrado) {
-        std::cout << "[SISTEMA] Enviando a imprimir: " << ultimoArchivo.filename() << "...\n";
+        std::cout << "[SISTEMA] Enviando a imprimir (Driver Windows): " << ultimoArchivo.filename() << "...\n";
         
-        // ShellExecute con el verbo "print" envía el archivo a la impresora predeterminada
-        // sin abrir el editor de texto (o abriéndolo minimizado muy rápido).
+        // "print" le dice a Windows: "Usa la impresora predeterminada para este archivo"
         HINSTANCE result = ShellExecuteA(
-            NULL,               // Handle ventana padre (NULL es escritorio)
-            "print",            // Verbo: QUEREMOS IMPRIMIR
-            ultimoArchivo.string().c_str(), // Ruta del archivo
-            NULL,               // Parámetros
-            NULL,               // Directorio de trabajo
-            SW_HIDE             // Mostrar ventana oculta (para que no moleste el Notepad)
+            NULL, 
+            "print", 
+            ultimoArchivo.string().c_str(), 
+            NULL, 
+            NULL, 
+            SW_HIDE // Intenta ocultar la ventana del bloc de notas
         );
 
-        // ShellExecute devuelve un valor > 32 si tuvo éxito
+        // Si el resultado es mayor a 32, fue exitoso.
         if ((intptr_t)result <= 32) {
             std::cerr << "(-) Error al intentar imprimir. Código: " << (intptr_t)result << "\n";
         } else {
-            std::cout << "(+) Orden de impresión enviada correctamente.\n";
+            std::cout << "(+) Orden enviada al driver de Windows.\n";
         }
-
     } else {
-        std::cerr << "(-) No se encontraron tickets para imprimir.\n";
+        std::cerr << "(-) No se encontraron tickets.\n";
     }
 }
 

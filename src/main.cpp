@@ -19,7 +19,8 @@ void printMenu() {
   std::cout << "3) Procesar ticket\n";
   std::cout << "4) Iniciar Servidor Web (Test)\n";
   std::cout << "5) Ver ultimos registros\n";
-  std::cout << "6) Salir\n";
+  std::cout << "6) Borrar Ultimos Registros\n";
+  std::cout << "7) Salir\n";
   std::cout << "\n========= OPCION DE RIESGO =======================\n";
   std::cout << "10) Borrar todos los datos";
   std::cout << "\n==================================================\n";
@@ -85,14 +86,25 @@ int main(int argc, char *argv[]) {
       runWebServer(db);
       system("CLS");
       break;
-    case 5: //
+    case 5: //mostrar todos los registros recientes
       menuShowRecent(db);
       system("CLS");
       break;
-    case 6: //salir del sistema
+    case 6: // Eliminar los ultimos registros
+      if (db.borrarRegistros()) {
+          std::cout << "Registros de raciones eliminados correctamente.\n";
+      } else {
+          std::cout << "Hubo un error al intentar borrar los registros.\n";
+      }      
+      system("PAUSE");
+      system("CLS");
+      break;
+
+    case 7: //salir del sistema
       running = false;
       system("CLS");
       break;
+      
     case 10: // Borrar todos los datos
     {
       char r1;

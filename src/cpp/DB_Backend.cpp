@@ -1,9 +1,11 @@
 // src/cpp/DB_Backend.cpp
 
 #include "DB_Backend.hpp"
+#include "DB_Models.hpp"
 #include <iostream>
 #include <stdexcept> // Para std::runtime_error
 #include <stdlib.h>
+#include <vector>
 
 //  Helpers de mapeo enum <-> int (locales a este .cpp)
 static std::optional<TipoRacion> to_tipo_racion(int v) {
@@ -711,6 +713,15 @@ bool DB_Backend::borrarTodo() {
   const char *sql = "DELETE FROM RegistrosRaciones; DELETE FROM Usuarios; "
                     "DELETE FROM DetallesEstudiante;";
   return _ejecutar_sql_script(sql);
+}
+
+bool DB_Backend::borrarRegistros() {
+    std::lock_guard<std::mutex> lock(db_mutex_);    
+    bool exito = _ejecutar_sql_script("DELETE FROM RegistrosRaciones;");
+    if (exito) {
+        _ejecutar_sql_script("DELETE FROM sqlite_sequence WHERE name='RegistrosRaciones';");
+    }
+    return exito;
 }
 
 // --- 7. API de Estadísticas y Reportes ---

@@ -82,6 +82,9 @@ public:
   //-- borrar todos los datos --
   bool borrarTodo();
 
+  //borrar todos los registros
+  bool borrarRegistros();
+
   // --- 7. API de Estadísticas y Reportes ---
 
   // Obtiene estadísticas del día actual
