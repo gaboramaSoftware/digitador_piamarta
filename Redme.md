@@ -210,3 +210,7 @@ Get-Content C:\Digitador\logs\server_*.log -Tail 50 -Wait
 ## 📜 Licencia
 
 Proyecto privado para Colegio Piamarta.
+
+
+##aplicacion de huelleros
+https://www.zkteco.com/en/product_detail/SLK20R.html
