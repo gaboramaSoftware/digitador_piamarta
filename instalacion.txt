@@ -1,0 +1,10 @@
+ Flujo de deployment:
+
+  Maquina de desarrollo:
+    .\scripts\build_deploy.ps1   → genera digitador_deploy.zip
+
+  NUC (como Administrador):
+    1. Copiar el zip + instaladores de Node.js y Python a una carpeta
+    2. Descomprimir
+    3. .\setup_nuc.ps1
+    4. Reiniciar → el totem arranca solo

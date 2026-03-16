@@ -70,7 +70,15 @@ func Main() {
 		defer sensor.Cerrar()
 	}
 
-	//iniciamos servidor de electron
+	// modo totem: arranca directo sin menu (usado en produccion)
+	for _, arg := range os.Args[1:] {
+		if arg == "--totem" {
+			fmt.Println("(+) Modo totem activado. Iniciando servidor y totem...")
+			go web.StartApiServer(8080, sensor, dbRepo)
+			ElectronTotem()
+			return
+		}
+	}
 
 	// variable para la opcion del menu
 	var opt int

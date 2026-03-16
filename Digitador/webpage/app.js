@@ -1,5 +1,18 @@
 // App.js
 
+// Verificar autenticacion
+if (sessionStorage.getItem('digitador_auth') !== 'true') {
+    window.location.href = 'login.html';
+}
+
+function logout() {
+    sessionStorage.removeItem('digitador_auth');
+    window.location.href = 'login.html';
+}
+
+//dominio pagina web
+const API_URL = 'https://api-digitador.midominio.com';
+
 // Variables globales
 let allStudents = [];
 let allRecords = [];
