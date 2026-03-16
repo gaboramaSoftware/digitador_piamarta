@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Build output
+*.exe
+dist/
+build/
+
+# Database files
+*.db
+*.sqlite
+
+# Environment
+.env
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Hardware drivers (large binaries)
+core/Hardware/Impresora/
+
+# Claude worktrees
+.claude/
+
+# Test artifacts
+test_db/

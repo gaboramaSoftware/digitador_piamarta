@@ -1,0 +1,44 @@
+# Reporte de Estado y Errores Resueltos
+
+A continuación te detallo todos los problemas complejos que resolvimos en las últimas interacciones para poner el sistema en pie.
+
+## 1. El SDK de ZKTeco y el problema del Init (C++)
+Originalmente el sensor reportaba [(-) No se encontraron dispositivos](file:///c:/Proyectos/Pydigitador/core/DB/Models.go#99-103).
+- **El Problema:** Dentro de [Sensor.cpp](file:///c:/Proyectos/Pydigitador/core/Hardware/Sensor/Sensor.cpp), el código estaba llamando a `ZKFPM_GetDeviceCount()` y `ZKFPM_OpenDevice(i)` **antes** de llamar a `ZKFPM_Init()`. El SDK de ZKTeco requiere estrictamente que [Init()](file:///C:/Proyectos/Pydigitador/core/Hardware/Sensor/SensorBridge.cpp#22-33) sea la primera instrucción.
+- **La Solución:** Reordenamos el código en [initSensor()](file:///c:/Proyectos/Pydigitador/core/Hardware/Sensor/Sensor.cpp#25-100) para que primero inicialice el SDK, luego cuente los dispositivos y finalmente abra el dispositivo `0` (en lugar de abrir el índice `portCount` que estaba fuera de rango).
+
+## 2. Errores de Tipos y Compilación en [main.go](file:///c:/Proyectos/Pydigitador/cmd/main.go)
+La integración del menú principal ([main.go](file:///c:/Proyectos/Pydigitador/cmd/main.go)) con los módulos de `app/logic` y `app/ticket` presentaba varios desajustes en las firmas de las funciones:
+- **`VerificarUsuario`:** Esperaba los bytes de la huella capturada `(sensor, []byte, db)`, pero se le estaba pasando `(sensor, dbRepo)`. Mapeamos esto creando la función intermedia `logic.MenuVerificar` que se encarga de capturar la huella y pasársela.
+- **`EmitirTicket`:** Esperaba un perfil de usuario ya cargado. Se creó `logic.MenuTicket` que orquesta la captura, la búsqueda biométrica en la base de datos, obtiene el perfil del alumno encontrado y finalmente emite el ticket.
+- **`MenuShowRecent`:** La función no existía. Se creó para que imprima por consola los últimos 10 tickets emitidos usando el repositorio.
+
+## 3. Discrepancias en Esquema SQL (Go vs SQLite)
+Las consultas en `dbRepository.go` fallaban porque los nombres de tablas no coincidían con los creados en el archivo `.sql` de migración o el histórico de C++.
+- **El Problema:** Go intentaba leer de la tabla `RegistroRacion` (singular), pero la tabla real de SQLite se llama `RegistrosRaciones` (plural).
+- **La Solución:** Se actualizaron las queries `SELECT`, `DELETE` y `MAX` para que apunten a `RegistrosRaciones`.
+- También se corrigió un error al borrar usuarios (`DELETE FROM Usuarios`). Usar `MAX(run_id)` borraba el RUT más grande alfabéticamente. Se cambió para usar `MAX(rowid)` que asegura borrar el *último insertado*.
+
+## 4. El Nuevo Problema Analizado: Verificación y Duplicidad
+Al probar la Opción 2 del Menú (Verificar Huella), el log imprime `(-) [VERIFICADOR]: Estudiante no está registrado en el sistema`.
+
+Para entenderlo, consultamos directamente la base de datos y observamos la estructura de los datos guardados en la tabla `Usuarios`:
+```text
+RunID        DV   Nombre              Template Size
+11111111     1    Root Admin            0 bytes
+20468300K    K    Enzo Miranda       1050 bytes  (Duplicado / Error formato)
+20468300     K    Gabriel Andres     1056 bytes  (Correcto)
+21449440K    K    Juan Pablo...      1064 bytes  (Error formato)
+20732890     1    Andres Ramirez     1218 bytes  (Correcto)
+...
+```
+
+### ¿Qué está pasando con las validaciones?
+1. **Datos Corruptos Previos:** En las primeras pruebas antes de nuestros últimos FIXes, la función de enrolamiento insertó los RUTs con y sin el dígito verificador pegado (`20468300K` vs `20468300`). 
+2. **Duplicidad Biométrica Permitida:** El sistema guarda las huellas sin validar si ya existen previamente al registrar. Si enrolas la misma huella 2 veces con distintos RUTs (ej: tu propia huella), el score de coincidencia puede verse comprometido si el loop de verificación no está deteniéndose correctamente o si el `Score` calculado devuelve distinto por tener múltiples templates de tu dedo.
+3. **El Match Treshold:** En `VerificarUser.go` agregamos un Log oculto. Probaremos de nuevo la verificación (opción 2) porque acabo de agregar código que imprime el Score real que el SDK está calculando al colocar el dedo y el tamaño del template.
+
+### Próximos pasos (Propuesta)
+1. Leer el `Score` (puntaje de semejanza de huellas) que nos devuelve la nueva Opción 2 del menú para ver que número real arroja ZKTeco al fallar.
+2. Hacer un borrado total (Opción 10) para limpiar los registros corruptos.
+3. Aplicar validación de duplicidad biométrica ANTES de guardar en el enrolamiento.

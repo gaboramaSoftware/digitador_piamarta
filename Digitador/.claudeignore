@@ -1,0 +1,10 @@
+node_modules/
+.git/
+.env
+*.log
+dist/
+build/
+x64lib/
+x86lib/
+asio-1.30.2/
+POS Printer Driver V11.3.0.3/

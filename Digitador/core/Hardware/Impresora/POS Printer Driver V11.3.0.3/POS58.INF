@@ -1,0 +1,99 @@
+;
+;  NEWPOS58.INF
+;
+; 
+;
+; Copyright (C) 2001
+;
+
+
+[Version]
+Signature="$Windows NT$"
+Provider=%AUTHOR%
+LayoutFile=ntprint.inf
+ClassGUID={4D36E979-E325-11CE-BFC1-08002BE10318}
+Class=Printer
+DriverVer=08/01/2001
+CatalogFile=printer.cat
+
+[ClassInstall32.NT]
+AddReg=printer_class_addreg
+
+[printer_class_addreg]
+HKR,,,,%PrinterClassName%
+HKR,,Icon,,"-4"
+HKR,,Installer32,,"ntprint.dll,ClassInstall32"
+HKR,,NoDisplayClass,,1
+HKR,,EnumPropPages32,,"printui.dll,PrinterPropPageProvider"
+
+[Manufacturer]
+"POS"=POS, NTx86, NTamd64, NTia64
+
+[POS]
+"POS-58 11.3.0.1"      = DRIVER_POS58
+
+[POS.NTx86]
+"POS-58 11.3.0.1"      = DRIVER_POS58
+
+[POS.NTamd64]
+"POS-58 11.3.0.1"      = DRIVER_POS58
+
+[POS.NTia64]
+"POS-58 11.3.0.1"      = DRIVER_POS58
+
+[DRIVER_POS58]
+CopyFiles=@ZIKU.UFM
+CopyFiles=@POS58.ini
+CopyFiles=@POS58.GPD
+;CopyFiles=@POS58.INF
+;CopyFiles=@RES58.DLL
+CopyFiles=POS58FILES
+DataSection=UNIDRV_DATA
+DataFile=POS58.GPD
+Include=NTPRINT.INF
+Needs=UNIDRV.OEM
+Addreg = port_AddReg
+
+;[DefaultInstall.NT]
+;[ClassInstall32.ntx86]
+;[ClassInstall32]
+
+[port_AddReg]
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Ports","COM1:",0x00000000,%COMMCONFIG%
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Ports","COM2:",0x00000000,%COMMCONFIG%
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Ports","COM3:",0x00000000,%COMMCONFIG%
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Ports","COM4:",0x00000000,%COMMCONFIG%
+
+[POS58FILES]
+pos58d.dll
+pos58f.dll
+RES58.DLL
+
+[SourceDisksNames]
+100 = %disk1%
+
+[SourceDisksFiles.x86]
+pos58d.dll = 100,i386
+pos58f.dll = 100,i386
+RES58.DLL = 100,i386
+
+[SourceDisksFiles.amd64]
+pos58d.dll = 100,x64
+pos58f.dll = 100,x64
+RES58.DLL = 100,x64
+
+[SourceDisksFiles.ia64]
+pos58d.dll = 100,ia64
+pos58f.dll = 100,ia64
+RES58.DLL = 100,ia64
+
+[DestinationDirs]
+DefaultDestDir=66000
+
+;[ControlFlags]
+;ExcludeFromSelect = 2369
+
+[Strings]
+AUTHOR="Microsoft"
+COMMCONFIG="9600,n,8,1,p"
+disk1="POS58 DRIVER"
