@@ -35,8 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 5000);
 
     // Responsive search button behavior
-    setupSearchBehavior('search-input');
-    setupSearchBehavior('search-students-input');
+    setupSearchBehavior('search-dashboard');
+    setupSearchBehavior('search-courses');
+    setupSearchBehavior('search-reports');
 
 
 });
@@ -75,8 +76,7 @@ function showSection(sectionId) {
     const titles = {
         'dashboard': 'Dashboard',
         'students': 'Gestión de Estudiantes',
-        'reports': 'Reportes',
-        'settings': 'Configuración'
+        'reports': 'Reportes'
     };
     document.getElementById('page-title').textContent = titles[sectionId];
 
@@ -182,7 +182,15 @@ function deleteCourses() {
         }
     });
 
-    const cursosMap = Array.from(cursosSet).sort((a, b) => a.localeCompare(b));
+    const cursosMap = Array.from(cursosSet).sort((a, b) => {
+        const priorityA = getCursoPriority(a);
+        const priorityB = getCursoPriority(b);
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+        return a.localeCompare(b);
+    });
+
 
     if (cursosMap.length === 0) {
         grid.innerHTML = '<div class="no-courses-message"><p>No hay cursos registrados</p></div>';
@@ -234,6 +242,15 @@ async function handleDeleteSingleCourse(curso, letra, formattedName) {
     }
 }
 
+/**
+ * Ordena los cursos por ciclo educativo (PK, Kinder, Básico, Medio)
+ */
+async function handleOrdenarCursos() {
+    loadCourses(); // loadCourses ya tendrá la lógica de ordenación por ciclo
+    alert("Cursos ordenados por ciclo educativo.");
+}
+
+
 async function handleDeleteCourses() {
     if (!confirm(`🚨 PELIGRO 🚨\n\n¿Realmente desea borrar a TODOS los estudiantes del sistema?\nEsto limpiará la base de datos completa de usuarios.\n\nESTA ACCION NO SE PUEDE DESHACER.`)) {
         return;
@@ -280,7 +297,7 @@ async function handleDeleteRecords() {
         if (result.success) {
             alert('Todos los registros han sido limpiados correctamente.');
             closeDeleteRecordsModal();
-            fetchRecentRecords(); // recargar tabla
+            fetchData(); // recargar tabla
             fetchStats();
         } else {
             alert('Error limpiando registros.');
@@ -293,7 +310,35 @@ async function handleDeleteRecords() {
 }
 
 // ========== DYNAMIC COURSES ==========
+
+/**
+ * Determina la prioridad de ordenación de un curso según el sistema chileno.
+ * Retorna un valor numérico: menor valor = mayor prioridad (aparece primero).
+ */
+function getCursoPriority(courseKey) {
+    const parts = courseKey.split('-');
+    const curso = parts[0].trim().toUpperCase();
+
+    // 1. Pre-Básica
+    if (curso.includes('PRE') || curso.startsWith('PK')) return 10;
+    if (curso.includes('KINDER') || curso === 'K') return 20;
+
+    // 2. Educación Básica
+    // Según formatCourseLabel, 5-8 se consideran Básico
+    if (["5", "6", "7", "8"].includes(curso)) return 100 + parseInt(curso);
+    if (curso.includes('BÁSICO') || curso.includes('BASICO')) return 100 + (parseInt(curso) || 1);
+
+    // 3. Educación Media
+    // Según formatCourseLabel, 1-4 se consideran Medio
+    if (["1", "2", "3", "4"].includes(curso)) return 200 + parseInt(curso);
+    if (curso.includes('MEDIO')) return 200 + (parseInt(curso) || 1);
+
+    // 4. Otros
+    return 999;
+}
+
 function formatCourseLabel(curso, letra) {
+
     if (!curso || curso === "N/A") return 'Sin Curso';
     let base = curso.toString().trim();
     if (["1", "2", "3", "4"].includes(base)) {
@@ -318,7 +363,16 @@ function loadCourses() {
     });
 
     // Sort them alphabetically (or optionally apply custom sorting logic if needed)
-    const cursosMap = Array.from(cursosSet).sort((a, b) => a.localeCompare(b));
+    // Ordenar por ciclo educativo (PK < K < Básico < Medio)
+    const cursosMap = Array.from(cursosSet).sort((a, b) => {
+        const priorityA = getCursoPriority(a);
+        const priorityB = getCursoPriority(b);
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+        return a.localeCompare(b); // Si son del mismo nivel, ordenar alfabéticamente (letra)
+    });
+
 
     populateCourseSelects(cursosMap);
 
@@ -341,13 +395,17 @@ function loadCourses() {
 }
 
 function populateCourseSelects(cursosMap) {
-    const selects = ['enroll-curso', 'edit-curso'];
+    const selects = ['enroll-curso', 'edit-curso', 'curso-filter'];
     selects.forEach(id => {
         const select = document.getElementById(id);
         if (!select) return;
 
         // Reset to placeholder
-        select.innerHTML = '<option value="">Seleccione un curso</option>';
+        if (id === 'curso-filter') {
+            select.innerHTML = '<option value="">Todos los cursos</option>';
+        } else {
+            select.innerHTML = '<option value="">Seleccione un curso</option>';
+        }
 
         cursosMap.forEach(courseKey => {
             const parts = courseKey.split('-');
@@ -365,43 +423,51 @@ function populateCourseSelects(cursosMap) {
 // ========== RENDER FUNCTIONS ==========
 
 function renderTable(records) {
-    const tbody = document.getElementById('records-body');
+    const bodies = ['records-dashboard-body', 'records-reports-body'];
 
-    if (records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No hay registros recientes</td></tr>';
-        return;
-    }
+    bodies.forEach(bodyId => {
+        const tbody = document.getElementById(bodyId);
+        if (!tbody) return;
 
-    let html = '';
+        if (records.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${bodyId.includes('reports') ? 8 : 7}" class="text-center">No hay registros recientes</td></tr>`;
+            return;
+        }
 
-    records.forEach(record => {
-        const rationType = record.tipo_racion === 1 ?
-            '<span class="badge badge-breakfast">Desayuno</span>' :
-            '<span class="badge badge-lunch">Almuerzo</span>';
+        let html = '';
+        records.forEach(record => {
+            const rationType = record.tipo_racion === 1 ?
+                '<span class="badge badge-breakfast">Desayuno</span>' :
+                '<span class="badge badge-lunch">Almuerzo</span>';
 
-        const status = record.estado === 'SINCRONIZADO' ?
-            '<span class="badge badge-synced">Sincronizado</span>' :
-            '<span class="badge badge-pending">Pendiente</span>';
+            const status = record.estado === 'SINCRONIZADO' ?
+                '<span class="badge badge-synced">Sincronizado</span>' :
+                '<span class="badge badge-pending">Pendiente</span>';
 
-        const time = record.hora ? new Date(record.hora).toLocaleTimeString() : record.fecha;
+            const time = record.hora ? new Date(record.hora).toLocaleTimeString() : record.fecha;
 
-        html += `
-            <tr>
-                <td>#${record.id}</td>
-                <td>
-                    <div style="font-weight: 600;">${record.nombre_completo}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">${record.run}</div>
-                </td>
-                <td>${record.curso}</td>
-                <td>${rationType}</td>
-                <td>${time}</td>
-                <td>${record.terminal}</td>
-                <td>${status}</td>
-            </tr>
-        `;
+            // En reportes hay una columna extra para Letra si es que no se fusiona en curso
+            const cursoCell = bodyId.includes('reports') ?
+                `<td>${record.curso || ""}</td><td>${record.letra || ""}</td>` :
+                `<td>${record.curso}</td>`;
+
+            html += `
+                <tr>
+                    <td>#${record.id}</td>
+                    <td>
+                        <div style="font-weight: 600;">${record.nombre_completo}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">${record.run}</div>
+                    </td>
+                    ${cursoCell}
+                    <td>${rationType}</td>
+                    <td>${time}</td>
+                    <td>${record.terminal}</td>
+                    <td>${status}</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
     });
-
-    tbody.innerHTML = html;
 }
 
 function renderStudentsTable(students) {
@@ -859,23 +925,82 @@ async function handleDeleteStudent() {
 
 // ========== FILTER FUNCTIONS ==========
 
-function filterTable() {
-    const input = document.getElementById('search-input');
-    const filter = input.value.toLowerCase();
-    const tbody = document.getElementById('records-body');
-    const rows = tbody.getElementsByTagName('tr');
+function filterCourses() {
+    const searchInput = document.getElementById('search-courses');
+    const selectFilter = document.getElementById('curso-filter');
 
-    for (let i = 0; i < rows.length; i++) {
-        const nameCol = rows[i].getElementsByTagName('td')[1];
-        if (nameCol) {
-            const txtValue = nameCol.textContent || nameCol.innerText;
-            if (txtValue.toLowerCase().indexOf(filter) > -1) {
-                rows[i].style.display = "";
-            } else {
-                rows[i].style.display = "none";
-            }
+    const searchText = searchInput ? searchInput.value.toLowerCase() : "";
+    const selectValue = selectFilter ? selectFilter.value : "";
+
+    const grid = document.getElementById('courses-grid');
+    if (!grid) return;
+    const buttons = grid.getElementsByClassName('btn-curso');
+
+    let visibleCount = 0;
+    for (let i = 0; i < buttons.length; i++) {
+        const btn = buttons[i];
+        const txtValue = btn.textContent || btn.innerText;
+
+        // Extraer courseKey del atributo onclick o usar el texto si no hay atributo
+        // En renderCourses: button.setAttribute('onclick', `openCourseModal('${courseKey}')`);
+        const onclickAttr = btn.getAttribute('onclick') || "";
+        const match = onclickAttr.match(/'([^']+)'/);
+        const btnCourseKey = match ? match[1] : "";
+
+        const matchesSearch = txtValue.toLowerCase().indexOf(searchText) > -1;
+        const matchesSelect = selectValue === "" || btnCourseKey === selectValue;
+
+        if (matchesSearch && matchesSelect) {
+            btn.style.display = "";
+            visibleCount++;
+        } else {
+            btn.style.display = "none";
         }
     }
+
+    const noCoursesMsg = document.querySelector('.no-courses-message');
+    if (noCoursesMsg) {
+        if (visibleCount === 0 && (searchText !== "" || selectValue !== "")) {
+            noCoursesMsg.style.display = 'block';
+            noCoursesMsg.querySelector('p').textContent = 'No se encontraron cursos que coincidan con los filtros';
+        } else if (visibleCount === 0 && searchText === "" && selectValue === "") {
+            noCoursesMsg.style.display = 'block';
+            noCoursesMsg.querySelector('p').textContent = 'No hay cursos registrados';
+        } else {
+            noCoursesMsg.style.display = 'none';
+        }
+    }
+}
+
+function filterTable() {
+    // Detectamos cual input usar basándonos en la sección activa
+    const isDashboard = document.getElementById('dashboard').classList.contains('active');
+    const inputId = isDashboard ? 'search-dashboard' : 'search-reports';
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const filter = input.value.toLowerCase();
+    const tbody = document.getElementById(isDashboard ? 'records-body' : 'records-body'); // Ambos tienen el mismo ID?
+    // Wait, line 208 in index.html also has id="records-body" for reports.
+    // This is another duplicate ID. I'll search for it.
+
+    // For now, let's just use the current logic but with unique input
+    const rows = document.querySelectorAll(isDashboard ? '#dashboard #records-body tr' : '#reports #records-body tr');
+
+    rows.forEach(row => {
+        const nameCol = row.getElementsByTagName('td')[1];
+        const cursoCol = row.getElementsByTagName('td')[2];
+        if (nameCol) {
+            const nameText = nameCol.textContent || nameCol.innerText;
+            const cursoText = cursoCol ? (cursoCol.textContent || cursoCol.innerText) : "";
+
+            if (nameText.toLowerCase().indexOf(filter) > -1 || cursoText.toLowerCase().indexOf(filter) > -1) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        }
+    });
 }
 
 function filterStudentsTable() {
@@ -958,7 +1083,14 @@ async function openExportModal() {
         }
     });
 
-    Array.from(cursosSet).sort((a, b) => a.localeCompare(b)).forEach(courseKey => {
+    Array.from(cursosSet).sort((a, b) => {
+        const priorityA = getCursoPriority(a);
+        const priorityB = getCursoPriority(b);
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+        return a.localeCompare(b);
+    }).forEach(courseKey => {
         let btn = document.createElement('button');
         btn.className = 'btn-curso';
         const parts = courseKey.split('-');

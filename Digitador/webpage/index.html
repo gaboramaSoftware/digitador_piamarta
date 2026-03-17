@@ -24,15 +24,11 @@
                 <a href="#" onclick="showSection('students')">
                     <span class="icon">👥</span> Estudiantes
                 </a>
-                <a href="#" onclick="showSection('settings')">
-                    <span class="icon">⚙️</span> Configuración
-                </a>
             </nav>
-            <div class="status-box">
-                <div class="status-indicator online"></div>
-                <span>Sistema Online</span>
-            </div>
-            <button onclick="logout()" style="margin-top:auto;padding:0.6rem 1rem;background:transparent;border:1px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.7);border-radius:8px;cursor:pointer;font-size:0.85rem;text-align:left;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'">
+            <button onclick="logout()"
+                style="margin-top:auto;padding:0.6rem 1rem;background:transparent;border:1px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.7);border-radius:8px;cursor:pointer;font-size:0.85rem;text-align:left;transition:background 0.2s;"
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'">
                 🚪 Cerrar sesión
             </button>
         </aside>
@@ -103,7 +99,7 @@
                                 <button class="btn-danger" onclick="deleteAllRecords()">Eliminar Registros</button>
                             </div>
                             <div class="search-box">
-                                <input type="text" id="search-input" placeholder="Buscar por nombre o RUN..."
+                                <input type="text" id="search-dashboard" placeholder="Buscar por nombre o RUN..."
                                     onkeyup="filterTable()">
                             </div>
                         </div>
@@ -121,7 +117,7 @@
                                     <th>Estado</th>
                                 </tr>
                             </thead>
-                            <tbody id="records-body">
+                            <tbody id="records-dashboard-body">
                                 <tr>
                                     <td colspan="7" class="text-center">Cargando datos...</td>
                                 </tr>
@@ -154,7 +150,14 @@
                 <!--Tabla de cursos-->
                 <div class="card courses-card">
                     <div class="card-header">
-                        <h3>Gestion de estudiantes</h3>
+                        <button class="btn-primary" onclick="handleOrdenarCursos()">
+                            <span class="icon">🗃️</span> Ordenar Cursos
+                        </button>
+                        <div class="search-box">
+                            <input type="text" id="search-courses" placeholder="Buscar curso..."
+                                onkeyup="filterCourses()">
+                        </div>
+
                     </div>
                     <div class="courses-scroll-area">
                         <div id="courses-grid" class="courses-grid">
@@ -169,54 +172,47 @@
                         </div>
                     </div>
                 </div>
-                <!-- Reports Section -->
-                <div id="reports" class="section">
-                    <!-- Recent Activity Table -->
-                    <div class="card table-card">
-                        <div class="card-header">
-                            <h3>Registros Recientes</h3>
-                            <div class="card-actions">
-                                <div class="exportar">
-                                    <button class="btn-exportar" onclick="openExportModal()">Exportar a Excel</button>
-                                </div>
-                                <div class="search-box">
-                                    <input type="text" id="search-input" placeholder="Buscar por nombre o RUN..."
-                                        onkeyup="filterTable()">
-                                </div>
+            </div>
+
+            <!-- Reports Section -->
+            <div id="reports" class="section">
+                <!-- Recent Activity Table -->
+                <div class="card table-card">
+                    <div class="card-header">
+                        <h3>Registros Recientes</h3>
+                        <div class="card-actions">
+                            <div class="exportar">
+                                <button class="btn-exportar" onclick="openExportModal()">Exportar a Excel</button>
+                            </div>
+                            <div class="search-box">
+                                <input type="text" id="search-reports" placeholder="Buscar por nombre o RUN..."
+                                    onkeyup="filterTable()">
                             </div>
                         </div>
-                        <div class="table-responsive">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Estudiante</th>
-                                        <th>Curso</th>
-                                        <th>Letra</th>
-                                        <th>Ración</th>
-                                        <th>Hora</th>
-                                        <th>Terminal</th>
-                                        <th>Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="records-body">
-                                    <tr>
-                                        <td colspan="7" class="text-center">Cargando datos...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Estudiante</th>
+                                    <th>Curso</th>
+                                    <th>Letra</th>
+                                    <th>Ración</th>
+                                    <th>Hora</th>
+                                    <th>Terminal</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-reports-body">
+                                <tr>
+                                    <td colspan="7" class="text-center">Cargando datos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-    </div>
-
-    <!-- Settings Section -->
-    <div id="settings" class="section">
-        <div class="card">
-            <h2>Configuración</h2>
-            <p>Próximamente...</p>
-        </div>
     </div>
     </main>
     </div>
@@ -296,10 +292,9 @@
                 </div>
             </div>
             <div id="lista-cursos" style="padding: 0 1.5rem 1.5rem 1.5rem;">
-                <button class="btn-exportar" onclick="openExportModal()">Exportar a Excel</button>
-                <button class="btn-primary" id="file-upload-btn"
+                <button class="btn-curso" id="enroll-student-btn"
                     onclick="document.getElementById('hidden-file-input').click()">
-                    <span class="icon">🟩</span> Añadir Excel
+                    <span class="icon">+</span> Enrolar Estudiante
                 </button>
             </div>
         </div>
@@ -410,7 +405,7 @@
     <div id="editarModal" class="modal">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>Editar Datos de Usuario</h2>
+                <h2>Editar Datos de Estudiante</h2>
                 <button class="modal-close" onclick="closeEditModal()">✕</button>
             </div>
 
