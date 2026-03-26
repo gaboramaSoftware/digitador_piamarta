@@ -89,6 +89,33 @@
                     </div>
                 </div>
 
+                <!-- Quick Search & Fingerprint Enrollment -->
+                <div class="card table-card" style="margin-bottom: 24px;">
+                    <div class="card-header">
+                        <h3>🔍 Búsqueda Rápida / Enrolar Huella</h3>
+                    </div>
+                    <div style="padding: 1rem;">
+                        <div class="search-box" style="width: 100%; max-width: none; margin-bottom: 1rem;">
+                            <input type="text" id="quick-search-input" placeholder="Escriba el nombre del alumno para registrar su huella..." 
+                                onkeyup="handleQuickSearch(this.value)">
+                        </div>
+                        <div id="quick-search-results" class="table-responsive" style="display: none; max-height: 300px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>RUN</th>
+                                        <th>Nombre</th>
+                                        <th>Curso</th>
+                                        <th>Estado Huella</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="quick-search-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Recent Activity Table -->
                 <div class="card table-card">
                     <div class="card-header">
@@ -317,8 +344,12 @@
                         <h3 id="stats-student-name">Nombre del Estudiante</h3>
                         <p id="stats-student-run">RUN: 12345678-9</p>
                         <p id="stats-student-curso">Curso: 1° Básico</p>
-                        <p id="stats-student-fingerprint" style="margin-top: 5px; font-size: 0.9em;">Cargando estado...
-                        </p>
+                        <p id="stats-student-fingerprint" style="margin-top: 5px; font-size: 0.9em;">Cargando estado...</p>
+                        <div id="stats-register-huella-container" style="display: none; margin-top: 10px;">
+                            <button class="btn-primary" onclick="handleCaptureHuellaSeparate(currentStudent.run)">
+                                <span class="icon">👆</span> Registrar Huella Ahora
+                            </button>
+                        </div>
                     </div>
                     <button class="btn-exportar" onclick="openDetalleModal()">
                         <span class="icon">📊</span> Detalle Estudiante

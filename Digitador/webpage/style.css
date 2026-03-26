@@ -677,8 +677,48 @@ header {
     }
 }
 
+/* ========== QUICK SEARCH RESULTS ========== */
+#quick-search-results {
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    margin-top: 0.5rem;
+    background: white;
+    filter: drop-shadow(0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+#quick-search-results .data-table th {
+    background-color: var(--primary);
+    color: white;
+}
+
+#quick-search-results .data-table tr:hover {
+    background-color: var(--bg-dark);
+}
+
+.status-huella-ok {
+    color: #065F46;
+    background-color: #D1FAE5;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.status-huella-pending {
+    color: #991B1B;
+    background-color: #FEE2E2;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* ========== OTHERS ========== */
 .text-center {
     text-align: center;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* ========== RESPONSIVE ========== */

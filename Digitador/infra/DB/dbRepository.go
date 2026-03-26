@@ -24,7 +24,7 @@ type SQLiteUserRepository struct {
 // creamos esta funcion para instanciar el repositorio
 func NewSQLiteUserRepository(dbPath string) (*SQLiteUserRepository, error) {
 	//definimos usar los mismos parametros que en C
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_mutex=full", dbPath))
+	dbConn, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_mutex=full", dbPath))
 
 	//se abrio la base de datos correctamente?
 	if err != nil {
@@ -33,28 +33,35 @@ func NewSQLiteUserRepository(dbPath string) (*SQLiteUserRepository, error) {
 	}
 
 	// esta conectada la base de datos?
-	if err = db.Ping(); err != nil {
+	if err = dbConn.Ping(); err != nil {
 		//no, reportar error
 		return nil, fmt.Errorf("error conectando a DB: %w", err)
 	}
 
 	// Habilitamos las foreign_keys (como en C++)
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	_, err = dbConn.Exec("PRAGMA foreign_keys = ON")
 	//se habilitaron las foreign_keys?
 	if err != nil {
 		//no
 		log.Printf("(-) [DB]: No se pudo habilitar foreign_keys: %v", err)
 	}
+
+	// Inicializamos las tablas y el poblamiento de datos por defecto (evitamos shadowing del paquete con dbConn)
+	if err := db.InitDatabase(dbConn); err != nil {
+		log.Printf("(-) [DB]: Error inicializando esquema: %v", err)
+		return nil, fmt.Errorf("error inicializando DB: %w", err)
+	}
+
 	//si, devolvemos el repositorio
-	return &SQLiteUserRepository{db: db}, nil
+	return &SQLiteUserRepository{db: dbConn}, nil
 }
 
 // creamos esta funcion para guardar los datos de un usuario
 func (r *SQLiteUserRepository) SaveUser(user db.Usuario) error {
 	query := `
         INSERT OR REPLACE INTO Usuarios 
-        (run_id, dv, nombre_completo, id_rol, template_huella) 
-        VALUES (?, ?, ?, ?, ?)
+        (run_id, dv, nombre_completo, id_rol, template_huella, activo) 
+        VALUES (?, ?, ?, ?, ?, ?)
     `
 	_, err := r.db.Exec(query,
 		user.RunID,
@@ -62,6 +69,7 @@ func (r *SQLiteUserRepository) SaveUser(user db.Usuario) error {
 		user.NombreCompleto,
 		user.IDRol,
 		user.TemplateHuella,
+		user.Activo,
 	)
 	if err != nil {
 		return fmt.Errorf("(-) [GO]: error guardando usuario: %w", err)
@@ -79,13 +87,13 @@ func (r *SQLiteUserRepository) UpdateStudent(user db.Usuario) error {
 	return r.SaveUser(user)
 }
 
-// Actualizar el curso y letra en la tabla DetailsEstudiante
-func (r *SQLiteUserRepository) UpdateStudentCourse(runID string, curso string, letra string) error {
+// Actualizar el curso y letra en la tabla DetailsEstudiante (ahora con IDs numéricos)
+func (r *SQLiteUserRepository) UpdateStudentCourse(runID string, idCurso int, idLetra int) error {
 	query := `
-        INSERT OR REPLACE INTO DetailsEstudiante (run_id, curso, letra) 
+        INSERT OR REPLACE INTO DetailsEstudiante (run_id, id_curso, id_letra) 
         VALUES (?, ?, ?)
     `
-	_, err := r.db.Exec(query, runID, curso, letra)
+	_, err := r.db.Exec(query, runID, idCurso, idLetra)
 	if err != nil {
 		return fmt.Errorf("(-) [GO]: error guardando curso/letra: %w", err)
 	}
@@ -108,9 +116,9 @@ func (r *SQLiteUserRepository) DeleteAllStudents() error {
 	return err
 }
 
-func (r *SQLiteUserRepository) DeleteStudentsByCourse(curso string, letra string) error {
-	query := `SELECT run_id FROM DetailsEstudiante WHERE curso = ? AND letra = ?`
-	rows, err := r.db.Query(query, curso, letra)
+func (r *SQLiteUserRepository) DeleteStudentsByCourse(idCurso int, idLetra int) error {
+	query := `SELECT run_id FROM DetailsEstudiante WHERE id_curso = ? AND id_letra = ?`
+	rows, err := r.db.Query(query, idCurso, idLetra)
 	if err != nil {
 		return err
 	}
@@ -139,7 +147,8 @@ func (r *SQLiteUserRepository) GetUser(runID string) (*db.Usuario, error) {
               dv, 
               nombre_completo, 
               id_rol, 
-              template_huella 
+              template_huella,
+              activo 
               FROM Usuarios 
               WHERE run_id = ?`
 
@@ -151,6 +160,7 @@ func (r *SQLiteUserRepository) GetUser(runID string) (*db.Usuario, error) {
 		&user.NombreCompleto,
 		&user.IDRol,
 		&user.TemplateHuella,
+		&user.Activo,
 	)
 
 	//se encontraron filas en la consulta sql???
@@ -170,7 +180,7 @@ func (r *SQLiteUserRepository) GetUser(runID string) (*db.Usuario, error) {
 // creamos la funcion para obtener todos los usuarios (por si el cliente la pide)
 func (r *SQLiteUserRepository) GetAllUsers() ([]db.Usuario, error) {
 	// Consultamos a la base de datos que nos mande todos los datos de la tabla Usuarios
-	query := `SELECT run_id, dv, nombre_completo, id_rol, template_huella FROM Usuarios`
+	query := `SELECT run_id, dv, nombre_completo, id_rol, template_huella, activo FROM Usuarios`
 
 	// generamos una variable que capture los errores de consulta (si existen XD)
 	rows, err := r.db.Query(query)
@@ -190,7 +200,7 @@ func (r *SQLiteUserRepository) GetAllUsers() ([]db.Usuario, error) {
 	for rows.Next() {
 		var user db.Usuario
 		// extraemos los valores de la fila actual y los "mapeamos" a los campos del struct
-		err := rows.Scan(&user.RunID, &user.DV, &user.NombreCompleto, &user.IDRol, &user.TemplateHuella)
+		err := rows.Scan(&user.RunID, &user.DV, &user.NombreCompleto, &user.IDRol, &user.TemplateHuella, &user.Activo)
 
 		// si falla el escaneo de una fila, avisamos qué pasó
 		if err != nil {
@@ -210,12 +220,15 @@ func (r *SQLiteUserRepository) GetAllUsers() ([]db.Usuario, error) {
 	return users, nil
 }
 
-// creamos la funcion para obtener todos los perfiles, incluyendo el curso
+// creamos la funcion para obtener todos los perfiles, incluyendo el curso (con JOINs normalizados)
 func (r *SQLiteUserRepository) GetAllProfiles() ([]db.PerfilEstudiante, error) {
 	query := `
-		SELECT u.run_id, u.dv, u.nombre_completo, u.id_rol, u.template_huella, IFNULL(d.curso, 'N/A') as curso, IFNULL(d.letra, '') as letra
+		SELECT u.run_id, u.dv, u.nombre_completo, u.id_rol, u.template_huella, u.activo,
+		       IFNULL(c.nombre, 'N/A') as curso, IFNULL(l.caracter, '') as letra
 		FROM Usuarios u
 		LEFT JOIN DetailsEstudiante d ON u.run_id = d.run_id
+		LEFT JOIN Curso c ON d.id_curso = c.id_curso
+		LEFT JOIN Letra l ON d.id_letra = l.id_letra
 	`
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -226,7 +239,7 @@ func (r *SQLiteUserRepository) GetAllProfiles() ([]db.PerfilEstudiante, error) {
 	var profiles []db.PerfilEstudiante
 	for rows.Next() {
 		var p db.PerfilEstudiante
-		err := rows.Scan(&p.RunID, &p.DV, &p.NombreCompleto, &p.IDRol, &p.TemplateHuella, &p.Curso, &p.Letra)
+		err := rows.Scan(&p.RunID, &p.DV, &p.NombreCompleto, &p.IDRol, &p.TemplateHuella, &p.Activo, &p.Curso, &p.Letra)
 		if err != nil {
 			return nil, fmt.Errorf("error escaneando perfil: %w", err)
 		}
@@ -254,8 +267,8 @@ func (r *SQLiteUserRepository) ObtenerTodosTemplates() (map[string][]byte, error
 	templates := make(map[string][]byte)
 	//iteramos por cada usuario
 	for _, u := range users {
-		//si el template no esta vacio
-		if len(u.TemplateHuella) > 0 {
+		//si el template no esta vacio Y el usuario esta activo
+		if len(u.TemplateHuella) > 0 && u.Activo {
 			//lo guardamos en el mapa
 			templates[u.RunID] = u.TemplateHuella
 		}
@@ -377,15 +390,15 @@ func (r *SQLiteUserRepository) ObtenerUltimosRegistros() ([]db.RegistroRacion, e
 	return registros, nil
 }
 
-// creamos la funcion para revisar los ultimos X registros con datos del alumno
+// creamos la funcion para revisar los ultimos X registros con datos del alumno (JOINs normalizados)
 func (r *SQLiteUserRepository) GetRecentRecords(limit int) ([]db.RegistroRecienteDTO, error) {
 	query := `
 		SELECT 
 			r.id_registro, 
 			u.nombre_completo, 
 			u.run_id, 
-			COALESCE(de.curso, 'N/A') as curso,
-			COALESCE(de.letra, '') as letra,
+			COALESCE(c.nombre, 'N/A') as curso,
+			COALESCE(l.caracter, '') as letra,
 			r.fecha_servicio, 
 			r.hora_evento, 
 			r.tipo_racion, 
@@ -394,6 +407,8 @@ func (r *SQLiteUserRepository) GetRecentRecords(limit int) ([]db.RegistroRecient
 		FROM RegistrosRaciones r
 		JOIN Usuarios u ON r.id_estudiante = u.run_id
 		LEFT JOIN DetailsEstudiante de ON u.run_id = de.run_id
+		LEFT JOIN Curso c ON de.id_curso = c.id_curso
+		LEFT JOIN Letra l ON de.id_letra = l.id_letra
 		ORDER BY r.id_registro DESC 
 		LIMIT ?`
 
@@ -426,15 +441,15 @@ func (r *SQLiteUserRepository) GetRecentRecords(limit int) ([]db.RegistroRecient
 	return registros, nil
 }
 
-// Nueva funcion para extraer registros masivos con filtros de excel
+// Nueva funcion para extraer registros masivos con filtros de excel (JOINs normalizados)
 func (r *SQLiteUserRepository) GetExportRecords(startDate, endDate string, courses []string, raciones []string) ([]db.RegistroRecienteDTO, error) {
 	query := `
 		SELECT 
 			r.id_registro, 
 			u.nombre_completo, 
 			u.run_id, 
-			COALESCE(de.curso, 'N/A') as curso,
-			COALESCE(de.letra, '') as letra,
+			COALESCE(c.nombre, 'N/A') as curso,
+			COALESCE(l.caracter, '') as letra,
 			r.fecha_servicio, 
 			r.hora_evento, 
 			r.tipo_racion, 
@@ -443,6 +458,8 @@ func (r *SQLiteUserRepository) GetExportRecords(startDate, endDate string, cours
 		FROM RegistrosRaciones r
 		JOIN Usuarios u ON r.id_estudiante = u.run_id
 		LEFT JOIN DetailsEstudiante de ON u.run_id = de.run_id
+		LEFT JOIN Curso c ON de.id_curso = c.id_curso
+		LEFT JOIN Letra l ON de.id_letra = l.id_letra
 		WHERE 1=1`
 
 	args := []interface{}{}
@@ -465,16 +482,16 @@ func (r *SQLiteUserRepository) GetExportRecords(startDate, endDate string, cours
 		courseConditions := []string{}
 		for _, curso := range courses {
 			parts := strings.Split(curso, "-")
-			c := parts[0]
-			l := ""
+			cursoNombre := parts[0]
+			letraCar := ""
 			if len(parts) > 1 {
-				l = parts[1]
+				letraCar = parts[1]
 			}
-			if c == "Sin Curso" {
-				courseConditions = append(courseConditions, "(de.curso IS NULL OR de.curso = 'N/A')")
+			if cursoNombre == "Sin Curso" {
+				courseConditions = append(courseConditions, "(de.id_curso IS NULL)")
 			} else {
-				courseConditions = append(courseConditions, "(de.curso = ? AND de.letra = ?)")
-				args = append(args, c, l)
+				courseConditions = append(courseConditions, "(c.nombre = ? AND l.caracter = ?)")
+				args = append(args, cursoNombre, letraCar)
 			}
 		}
 		query += " AND (" + strings.Join(courseConditions, " OR ") + ")"
@@ -585,12 +602,14 @@ func (r *SQLiteUserRepository) AddRecord(record db.RegistroRacion) error {
 	return r.GuardarRegistroRacion(record)
 }
 
-// ObtenerPerfilPorRunID devuelve el PerfilEstudiante dado un RunID, incluyendo su curso y letra
+// ObtenerPerfilPorRunID devuelve el PerfilEstudiante dado un RunID, incluyendo su curso y letra (JOINs normalizados)
 func (r *SQLiteUserRepository) ObtenerPerfilPorRunID(runID string) (*db.PerfilEstudiante, error) {
-	query := `SELECT u.run_id, u.dv, u.nombre_completo, u.id_rol, u.template_huella, 
-	                 IFNULL(d.curso, 'N/A') as curso, IFNULL(d.letra, '') as letra
+	query := `SELECT u.run_id, u.dv, u.nombre_completo, u.id_rol, u.template_huella, u.activo,
+	                 IFNULL(c.nombre, 'N/A') as curso, IFNULL(l.caracter, '') as letra
 	          FROM Usuarios u
 	          LEFT JOIN DetailsEstudiante d ON u.run_id = d.run_id
+	          LEFT JOIN Curso c ON d.id_curso = c.id_curso
+	          LEFT JOIN Letra l ON d.id_letra = l.id_letra
 	          WHERE u.run_id = ?`
 
 	var p db.PerfilEstudiante
@@ -600,6 +619,7 @@ func (r *SQLiteUserRepository) ObtenerPerfilPorRunID(runID string) (*db.PerfilEs
 		&p.NombreCompleto,
 		&p.IDRol,
 		&p.TemplateHuella,
+		&p.Activo,
 		&p.Curso,
 		&p.Letra,
 	)
@@ -696,6 +716,73 @@ func (r *SQLiteUserRepository) SubirPlantillaExcel(path string, force bool) erro
 	}
 
 	fmt.Println("(+) [GO]: Base de datos poblada con éxito desde el Excel.")
+	return nil
+}
+
+// Soft delete: desactiva un alumno sin borrar su historial
+func (r *SQLiteUserRepository) DesactivarEstudiante(runID string) error {
+	_, err := r.db.Exec("UPDATE Usuarios SET activo = 0 WHERE run_id = ?", runID)
+	if err != nil {
+		return fmt.Errorf("(-) [GO]: error desactivando estudiante: %w", err)
+	}
+	return nil
+}
+
+// Reactivar un alumno previamente desactivado
+func (r *SQLiteUserRepository) ReactivarEstudiante(runID string) error {
+	_, err := r.db.Exec("UPDATE Usuarios SET activo = 1 WHERE run_id = ?", runID)
+	if err != nil {
+		return fmt.Errorf("(-) [GO]: error reactivando estudiante: %w", err)
+	}
+	return nil
+}
+
+// GetAllCursos devuelve todos los cursos disponibles para los dropdowns
+func (r *SQLiteUserRepository) GetAllCursos() ([]db.Curso, error) {
+	query := `SELECT id_curso, nombre FROM Curso ORDER BY id_curso`
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("error consultando cursos: %w", err)
+	}
+	defer rows.Close()
+
+	var cursos []db.Curso
+	for rows.Next() {
+		var c db.Curso
+		if err := rows.Scan(&c.IDCurso, &c.Nombre); err != nil {
+			return nil, fmt.Errorf("error escaneando curso: %w", err)
+		}
+		cursos = append(cursos, c)
+	}
+	return cursos, nil
+}
+
+// GetAllLetras devuelve todas las letras disponibles para los dropdowns
+func (r *SQLiteUserRepository) GetAllLetras() ([]db.Letra, error) {
+	query := `SELECT id_letra, caracter FROM Letra ORDER BY id_letra`
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("error consultando letras: %w", err)
+	}
+	defer rows.Close()
+
+	var letras []db.Letra
+	for rows.Next() {
+		var l db.Letra
+		if err := rows.Scan(&l.IDLetra, &l.Caracter); err != nil {
+			return nil, fmt.Errorf("error escaneando letra: %w", err)
+		}
+		letras = append(letras, l)
+	}
+	return letras, nil
+}
+
+// Actualizar la huella de un alumno (separado de los datos personales)
+func (r *SQLiteUserRepository) UpdateStudentHuella(runID string, huella []byte) error {
+	_, err := r.db.Exec("UPDATE Usuarios SET template_huella = ? WHERE run_id = ?", huella, runID)
+	if err != nil {
+		return fmt.Errorf("(-) [GO]: error actualizando huella: %w", err)
+	}
 	return nil
 }
 

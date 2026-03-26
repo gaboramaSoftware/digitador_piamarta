@@ -7,8 +7,8 @@ import (
 	f "fmt"
 	"os"
 
-	db "Pydigitador/core/db"
 	sensor "Pydigitador/core/Hardware/Sensor"
+	db "Pydigitador/core/db"
 )
 
 // VerificarUsuario busca la huella capturada contra todos los templates
@@ -31,10 +31,8 @@ func VerificarUsuario(sensorAdapter *sensor.SensorAdapter, tplCapturado []byte, 
 			continue
 		}
 
-		f.Printf("    [DEBUG] RUN: %s | Score: %d | Tpl size: %d bytes\n", run, score, len(existingTpl))
-
 		// hay huellas identicas?
-		if score >= db.MatchTreshold {
+		if score >= db.MatchThreshold {
 			// si, mostramos los datos del usuario encontrado
 			f.Printf("(+) [VERIFICADOR]: Estudiante encontrado en el sistema\n")
 			perfil, err := database.ObtenerPerfilPorRunID(run)

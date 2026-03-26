@@ -45,7 +45,7 @@ func MenuTicket(sensor *digitador.SensorAdapter, dbRepo *repo.SQLiteUserReposito
 		if err != nil {
 			continue
 		}
-		if score >= db.MatchTreshold {
+		if score >= db.MatchThreshold {
 			runIDEncontrado = run
 			break
 		}

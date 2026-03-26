@@ -66,19 +66,40 @@ def procesar_excel_a_sql(ruta_excel, archivo_salida, rut_inicio=20000001):
             nombre_completo = f"{nombres} {apaterno} {amaterno}".strip().replace('  ', ' ')
 
             # Usamos ON CONFLICT para NO sobreescribir la huella dactilar si el alumno ya existe
-            insert_usuario = f"INSERT INTO Usuarios (run_id, dv, nombre_completo, id_rol, template_huella) VALUES ('{run_id}', '{dv}', '{nombre_completo}', 3, X'') ON CONFLICT(run_id) DO UPDATE SET nombre_completo=excluded.nombre_completo, dv=excluded.dv;"
+            insert_usuario = f"INSERT INTO Usuarios (run_id, dv, nombre_completo, id_rol, template_huella, activo) VALUES ('{run_id}', '{dv}', '{nombre_completo}', 3, X'', 1) ON CONFLICT(run_id) DO UPDATE SET nombre_completo=excluded.nombre_completo, dv=excluded.dv;"
             inserts_usuarios.append(f"-- #{contador_global}\n{insert_usuario}")
 
             # Procesar curso y letra
-            curso_limpio = curso
-            letra = ""
-            if len(curso) > 0:
-                ultimo = curso[-1].upper()
-                if ultimo.isalpha() and len(curso) > 1:
-                    letra = ultimo
-                    curso_limpio = curso[:-1].strip().rstrip('º').rstrip('.')
+            curso_limpio = "1° Básico" # Default o detectar del nombre de la hoja si es posible
+            letra_car = "A"
+            
+            # Intentar detectar curso y letra del string de la columna 'curso'
+            curso_raw = str(row['curso']).strip().lower()
+            if curso_raw and curso_raw != 'nan':
+                 # Lógica para normalizar el curso al formato de la DB (N° Básico/Medio)
+                 if 'primero' in curso_raw or '1' in curso_raw: num = "1°"
+                 elif 'segundo' in curso_raw or '2' in curso_raw: num = "2°"
+                 elif 'tercer' in curso_raw or '3' in curso_raw: num = "3°"
+                 elif 'cuart' in curso_raw or '4' in curso_raw: num = "4°"
+                 elif 'quint' in curso_raw or '5' in curso_raw: num = "5°"
+                 elif 'sext' in curso_raw or '6' in curso_raw: num = "6°"
+                 elif 'sept' in curso_raw or '7' in curso_raw: num = "7°"
+                 elif 'octav' in curso_raw or '8' in curso_raw: num = "8°"
+                 else: num = "1°"
 
-            insert_detail = f"INSERT OR REPLACE INTO DetailsEstudiante (run_id, curso, letra) VALUES ('{run_id}', '{curso_limpio}', '{letra}');"
+                 tipo = "Medio" if "medio" in curso_raw or "m" in curso_raw.split() else "Básico"
+                 curso_limpio = f"{num} {tipo}"
+
+                 # La letra suele ser la última palabra o carácter
+                 partes = curso_raw.split()
+                 if len(partes) > 0:
+                     letra_raw = partes[-1].upper()
+                     if len(letra_raw) == 1 and letra_raw.isalpha():
+                         letra_car = letra_raw
+            
+            # Usar subqueries para obtener los IDs correctos basados en el nombre
+            # Si no encuentra coincidencia exacta, el valor será NULL (pero el sistema Go lo manejará)
+            insert_detail = f"INSERT OR REPLACE INTO DetailsEstudiante (run_id, id_curso, id_letra) VALUES ('{run_id}', (SELECT id_curso FROM Curso WHERE nombre = '{curso_limpio}' LIMIT 1), (SELECT id_letra FROM Letra WHERE caracter = '{letra_car}' LIMIT 1));"
             inserts_details.append(f"-- #{contador_global}\n{insert_detail}")
 
             contador_global += 1  

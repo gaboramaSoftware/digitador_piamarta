@@ -38,32 +38,38 @@ func EnrollUsers(sensor *digitador.SensorAdapter,
 		return
 	}
 
-	// 4. Pedimos el curso al alumno
+	// 4. Pedimos el curso al alumno (ahora retorna ID numérico)
 	curso := enroll.LeerCurso()
-	if curso == "" {
+	if curso == 0 {
 		return
 	}
 
-	// 4.1 Pedimos la letra al alumno
+	// 4.1 Pedimos la letra al alumno (ahora retorna ID numérico)
 	letra := enroll.LeerLetra()
 
-	// 5. Capturamos la huella dactilar usando el adaptador
+	// 5. Capturamos la huella dactilar usando el adaptador (OPCIONAL en el nuevo modelo)
 	var plantilla []byte
 	if sensor != nil {
-		f.Println("Coloque su dedo en el sensor (tiene 10 segundos)...")
-		var err error
-		plantilla, err = sensor.CapturarHuellaTimeout(10 * time.Second)
-		if err != nil {
-			f.Println(err)
-			return
-		}
+		f.Println("¿Desea registrar huella? (s/n):")
+		var respHuella string
+		f.Scan(&respHuella)
+		if respHuella == "s" || respHuella == "S" {
+			f.Println("Coloque su dedo en el sensor (tiene 10 segundos)...")
+			var err error
+			plantilla, err = sensor.CapturarHuellaTimeout(10 * time.Second)
+			if err != nil {
+				f.Println(err)
+				return
+			}
 
-		// 6. Verificamos la duplicidad de la huella
-		// Usamos la función del paquete enroll (única fuente de verdad)
-		err = enroll.VerificarDuplicidad(sensor, plantilla, dbRepo)
-		if err != nil {
-			f.Println("Error de duplicidad:", err)
-			return
+			// 6. Verificamos la duplicidad de la huella
+			err = enroll.VerificarDuplicidad(sensor, plantilla, dbRepo)
+			if err != nil {
+				f.Println("Error de duplicidad:", err)
+				return
+			}
+		} else {
+			f.Println("(!) Se registra alumno sin huella.")
 		}
 	} else {
 		f.Println("(!) Sensor no disponible, se registra sin huella.")
@@ -82,6 +88,7 @@ func EnrollUsers(sensor *digitador.SensorAdapter,
 		NombreCompleto: nombreCompleto,
 		IDRol:          db.RolEstudiante,
 		TemplateHuella: plantilla,
+		Activo:         true, // Nuevo alumno siempre activo
 	}
 
 	// 8. Guardamos el usuario en la base de datos
@@ -91,7 +98,7 @@ func EnrollUsers(sensor *digitador.SensorAdapter,
 		return
 	}
 
-	// 9. Guardamos curso y letra
+	// 9. Guardamos curso y letra (con IDs numéricos)
 	dbRepo.UpdateStudentCourse(usuario.RunID, curso, letra)
 
 	f.Printf("(+) [GO]: Usuario %s registrado exitosamente.\n", nombreCompleto)

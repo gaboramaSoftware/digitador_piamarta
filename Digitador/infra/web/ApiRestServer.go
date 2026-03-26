@@ -46,6 +46,20 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 		json.NewEncoder(w).Encode(status)
 	})
 
+	// Pre-cargar todos los templates en el cache del sensor (Modo Ultra-Rápido)
+	if s != nil {
+		fmt.Println("(+) [WEB]: Pre-cargando templates en el cache del sensor en memoria...")
+		templates, _ := r.ObtenerTodosTemplates()
+		count := 0
+		for run, tpl := range templates {
+			err := s.DBAdd1N(run, tpl)
+			if err == nil {
+				count++
+			}
+		}
+		fmt.Printf("(+) [WEB]: %d de %d templates cargados correctamente en el motor biométrico.\n", count, len(templates))
+	}
+
 	//endpoint para obtener estadisticas
 	mux.HandleFunc("/api/stats", func(w http.ResponseWriter, r_req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -60,16 +74,20 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 
 		var mappedRecords []map[string]interface{}
 		for _, rec := range records {
+			cursoCompleto := rec.Curso
+			if rec.Letra != "" {
+				cursoCompleto += " " + rec.Letra
+			}
 			mappedRecords = append(mappedRecords, map[string]interface{}{
 				"id":              rec.ID,
 				"nombre_completo": rec.NombreCompleto,
 				"run":             rec.Run,
-				"curso":           "N/A", // El modelo actual no tiene el curso asociado directamente
+				"curso":           cursoCompleto,
 				"tipo_racion":     rec.TipoRacion,
 				"hora":            rec.HoraEvento,
 				"fecha":           rec.FechaServicio,
 				"terminal":        rec.NUC,
-				"estado":          "SINCRONIZADO", // El frontend evalúa SINCRONIZADO
+				"estado":          "SINCRONIZADO",
 			})
 		}
 		json.NewEncoder(w).Encode(map[string]interface{}{"records": mappedRecords})
@@ -87,6 +105,7 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 				"curso":     s.Curso,
 				"letra":     s.Letra,
 				"hasHuella": len(s.TemplateHuella) > 0,
+				"activo":    s.Activo,
 			})
 		}
 		json.NewEncoder(w).Encode(res)
@@ -110,46 +129,29 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"student": map[string]interface{}{
-				"run":     perfil.RunID,
-				"nombre":  perfil.NombreCompleto,
-				"curso":   perfil.Curso,
-				"letra":   perfil.Letra,
+				"run":       perfil.RunID,
+				"nombre":    perfil.NombreCompleto,
+				"curso":     perfil.Curso,
+				"letra":     perfil.Letra,
 				"hasHuella": hasHuella,
+				"activo":    perfil.Activo,
 			},
 		})
 	})
 
+	// POST /api/students - Registrar alumno nuevo (RUT es lo principal, huella OPCIONAL)
 	mux.HandleFunc("POST /api/students", func(w http.ResponseWriter, r_req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		var reqData struct {
-			Run    string `json:"run"` // ej: 12345678K (sin guion)
-			Nombre string `json:"nombre"`
-			Curso  string `json:"curso"`
-			Letra  string `json:"letra"`
+			Run      string `json:"run"`      // ej: 12345678K (sin guion)
+			Nombre   string `json:"nombre"`
+			IDCurso  int    `json:"id_curso"`
+			IDLetra  int    `json:"id_letra"`
+			ConHuella bool   `json:"con_huella"` // indica si se debe capturar huella
 		}
 		if err := json.NewDecoder(r_req.Body).Decode(&reqData); err != nil {
 			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Datos invalidos"})
-			return
-		}
-
-		if s == nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"success":    false,
-				"error_code": "SENSOR_INIT_FAILED",
-				"message":    "Sensor desconectado",
-			})
-			return
-		}
-
-		plantilla, err := s.CapturarHuella()
-		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"success":    false,
-				"error_code": "FINGERPRINT_TIMEOUT",
-				"message":    "Error al leer la huella o timeout",
-			})
 			return
 		}
 
@@ -163,15 +165,41 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 			runID = reqData.Run
 		}
 
+		// La huella es OPCIONAL en el nuevo modelo (RUT prima)
+		var plantilla []byte
+		if reqData.ConHuella {
+			if s == nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success":    false,
+					"error_code": "SENSOR_INIT_FAILED",
+					"message":    "Sensor desconectado. El alumno se registrará sin huella.",
+				})
+				return
+			}
+
+			var err error
+			plantilla, err = s.CapturarHuella()
+			if err != nil {
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success":    false,
+					"error_code": "FINGERPRINT_TIMEOUT",
+					"message":    "Error al leer la huella o timeout",
+				})
+				return
+			}
+		}
+
 		user := Database.Usuario{
 			RunID:          runID,
 			DV:             dv,
 			NombreCompleto: reqData.Nombre,
 			IDRol:          Database.RolEstudiante,
 			TemplateHuella: plantilla,
+			Activo:         true, // Nuevo alumno siempre activo
 		}
 
-		err = r.AddStudent(user)
+		err := r.AddStudent(user)
 		if err != nil {
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success":    false,
@@ -181,11 +209,12 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 			return
 		}
 
-		// Save the course info to the DetailsEstudiante table
-		r.UpdateStudentCourse(runID, reqData.Curso, reqData.Letra)
+		// Guardar curso/letra con IDs numéricos
+		r.UpdateStudentCourse(runID, reqData.IDCurso, reqData.IDLetra)
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success":          true,
+			"has_huella":       len(plantilla) > 0,
 			"fingerprint_size": len(plantilla),
 		})
 	})
@@ -210,7 +239,7 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 		json.NewEncoder(w).Encode(history)
 	})
 
-	// Editar alumno
+	// Editar alumno (ahora con IDs de curso/letra)
 	mux.HandleFunc("PUT /api/students/{run}", func(w http.ResponseWriter, r_req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fullRun := r_req.PathValue("run")
@@ -218,9 +247,9 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 		runID := parts[0]
 
 		var reqData struct {
-			Nombre string `json:"nombre"`
-			Curso  string `json:"curso"`
-			Letra  string `json:"letra"`
+			Nombre  string `json:"nombre"`
+			IDCurso int    `json:"id_curso"`
+			IDLetra int    `json:"id_letra"`
 		}
 		json.NewDecoder(r_req.Body).Decode(&reqData)
 
@@ -233,8 +262,8 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 		user.NombreCompleto = reqData.Nombre
 		r.UpdateStudent(*user)
 
-		if reqData.Curso != "" || reqData.Letra != "" {
-			r.UpdateStudentCourse(runID, reqData.Curso, reqData.Letra)
+		if reqData.IDCurso > 0 || reqData.IDLetra > 0 {
+			r.UpdateStudentCourse(runID, reqData.IDCurso, reqData.IDLetra)
 		}
 
 		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
@@ -273,15 +302,106 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
 	})
 
-	// Eliminar un curso especifico
+	// Eliminar un curso especifico (por IDs numéricos)
 	mux.HandleFunc("DELETE /api/courses", func(w http.ResponseWriter, r_req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		curso := r_req.URL.Query().Get("curso")
-		letra := r_req.URL.Query().Get("letra")
+		idCursoStr := r_req.URL.Query().Get("id_curso")
+		idLetraStr := r_req.URL.Query().Get("id_letra")
 
-		err := r.DeleteStudentsByCourse(curso, letra)
+		idCurso, _ := strconv.Atoi(idCursoStr)
+		idLetra, _ := strconv.Atoi(idLetraStr)
+
+		err := r.DeleteStudentsByCourse(idCurso, idLetra)
 		if err != nil {
 			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]bool{"success": true})
+	})
+
+	// GET /api/courses - Lista de cursos para dropdowns
+	mux.HandleFunc("GET /api/courses", func(w http.ResponseWriter, r_req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		cursos, err := r.GetAllCursos()
+		if err != nil {
+			json.NewEncoder(w).Encode([]interface{}{})
+			return
+		}
+		json.NewEncoder(w).Encode(cursos)
+	})
+
+	// GET /api/letras - Lista de letras para dropdowns
+	mux.HandleFunc("GET /api/letras", func(w http.ResponseWriter, r_req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		letras, err := r.GetAllLetras()
+		if err != nil {
+			json.NewEncoder(w).Encode([]interface{}{})
+			return
+		}
+		json.NewEncoder(w).Encode(letras)
+	})
+
+	// POST /api/students/{run}/huella - Registrar/actualizar huella por separado
+	mux.HandleFunc("POST /api/students/{run}/huella", func(w http.ResponseWriter, r_req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fullRun := r_req.PathValue("run")
+		parts := strings.Split(fullRun, "-")
+		runID := parts[0]
+
+		if s == nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Sensor desconectado",
+			})
+			return
+		}
+
+		plantilla, err := s.CapturarHuella()
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Error al leer la huella o timeout",
+			})
+			return
+		}
+
+		err = r.UpdateStudentHuella(runID, plantilla)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
+
+		// También agregar al cache del motor biométrico si está disponible
+		s.DBAdd1N(runID, plantilla)
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":          true,
+			"fingerprint_size": len(plantilla),
+		})
+	})
+
+	// PUT /api/students/{run}/activo - Activar/desactivar alumno (Soft Delete)
+	mux.HandleFunc("PUT /api/students/{run}/activo", func(w http.ResponseWriter, r_req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fullRun := r_req.PathValue("run")
+		parts := strings.Split(fullRun, "-")
+		runID := parts[0]
+
+		var reqData struct {
+			Activo bool `json:"activo"`
+		}
+		json.NewDecoder(r_req.Body).Decode(&reqData)
+
+		var err error
+		if reqData.Activo {
+			err = r.ReactivarEstudiante(runID)
+		} else {
+			err = r.DesactivarEstudiante(runID)
+		}
+
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": err.Error()})
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
@@ -458,17 +578,10 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 			return
 		}
 
-		allTemplates, _ := r.ObtenerTodosTemplates()
-		var runID string
-		for run, tpl := range allTemplates {
-			score, _ := s.CompararHuellas(plantilla, tpl)
-			if score >= Database.MatchTreshold {
-				runID = run
-				break
-			}
-		}
-
-		if runID == "" {
+		// USAMOS EL NUEVO MOTOR 1:N (ULTRA-RÁPIDO)
+		runID, _, err := s.DBIdentify1N(plantilla)
+		if err != nil {
+			// Si no hay match o error
 			json.NewEncoder(w).Encode(map[string]string{"type": "no_match", "status": "rejected"})
 			return
 		}
@@ -505,7 +618,8 @@ func StartApiServer(port int, s *Sensor.SensorAdapter, r *Repo.SQLiteUserReposit
 			return
 		}
 
-		ticket.EmitirTicket(*perfil, fechaTXT, racionStr)
+		// Emitimos ticket en segundo plano para no bloquear la respuesta HTTP (Rápido!)
+		go ticket.EmitirTicket(*perfil, fechaTXT, racionStr)
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"type": "ticket", "status": "approved",

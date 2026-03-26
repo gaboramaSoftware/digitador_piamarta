@@ -27,6 +27,10 @@ import (
 type SensorAdapter struct {
 	handle C.SensorHandle
 	mu     sync.Mutex
+	// Map to convert C-Int-IDs back to Go-String-RunIDs for 1:N mode
+	idToRunID map[int]string
+	runIDToID map[string]int
+	nextID    int
 }
 
 // sensor falso para pruebas rapidas
@@ -59,7 +63,12 @@ func SensorGO() (*SensorAdapter, error) {
 
 	//si, entonces devolvemos el sensor y el tipo sensorAdapter
 	fmt.Println("(+)[GO]: Sensor inicializado correctamente")
-	return &SensorAdapter{handle: handle}, nil
+	return &SensorAdapter{
+		handle:    handle,
+		idToRunID: make(map[int]string),
+		runIDToID: make(map[string]int),
+		nextID:    1,
+	}, nil
 }
 
 // ==========================================
@@ -175,4 +184,64 @@ func (s *SensorAdapter) CompararHuellas(plantilla1 []byte, plantilla2 []byte) (i
 
 	//no, retornamos el score
 	return int(score), nil
+}
+
+// -----------------------------------------------------------------------------
+// OPERACIONES 1:N (Para modo Totem Ultra-Rápido)
+// -----------------------------------------------------------------------------
+
+// DBAdd1N agrega una huella al cache del sensor y asigna un id entero mapeado
+func (s *SensorAdapter) DBAdd1N(runID string, plantilla []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.handle == nil {
+		return errors.New("(-) [GO]: sensor no inicializado")
+	}
+
+	// Si ya existe, nos saltamos el incremento
+	id, ok := s.runIDToID[runID]
+	if !ok {
+		id = s.nextID
+		s.nextID++
+	}
+
+	pTpl := (*C.uchar)(unsafe.Pointer(&plantilla[0]))
+	res := C.DBAdd(s.handle, C.int(id), pTpl, C.int(len(plantilla)))
+
+	if res == 0 {
+		return errors.New("(-) [GO]: error al agregar huella a la cache del sensor (C++)")
+	}
+
+	// Guardamos el mapeo para poder reconocer el RUN despues
+	s.idToRunID[id] = runID
+	s.runIDToID[runID] = id
+
+	return nil
+}
+
+// DBIdentify1N busca una huella en el cache y devuelve directamente el RunID
+func (s *SensorAdapter) DBIdentify1N(plantilla []byte) (string, int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.handle == nil {
+		return "", 0, errors.New("(-) [GO]: sensor no inicializado")
+	}
+
+	var cID, cScore C.int
+	pTpl := (*C.uchar)(unsafe.Pointer(&plantilla[0]))
+
+	res := C.DBIdentify(s.handle, pTpl, C.int(len(plantilla)), &cID, &cScore)
+
+	if res == 0 {
+		return "", 0, errors.New("no_match")
+	}
+
+	runID, ok := s.idToRunID[int(cID)]
+	if !ok {
+		return "", 0, errors.New("run_not_mapped")
+	}
+
+	return runID, int(cScore), nil
 }

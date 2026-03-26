@@ -567,10 +567,16 @@ async function openStudentStats(run) {
         const response = await fetch(`/api/students/${student.run}`);
         const data = await response.json();
         const fpStatusDisplay = document.getElementById('stats-student-fingerprint');
+        const registerBtnContainer = document.getElementById('stats-register-huella-container');
+        
         if (data.success && data.student && data.student.hasHuella) {
             fpStatusDisplay.innerHTML = '✅ <span style="color: #065F46; font-weight: bold;">Huella Registrada</span>';
+            if (registerBtnContainer) registerBtnContainer.style.display = 'none';
         } else {
             fpStatusDisplay.innerHTML = '❌ <span style="color: #991B1B; font-weight: bold;">Sin Huella Biometrica</span>';
+            if (registerBtnContainer) {
+                registerBtnContainer.style.display = 'block';
+            }
         }
     } catch (err) {
         document.getElementById('stats-student-fingerprint').innerHTML = '⚠️ <span style="color: #B45309;">Estado Desconocido</span>';
@@ -1360,6 +1366,91 @@ function refreshData() {
         }, 500);
     });
 }
+
+// ========== NUEVA FUNCIONALIDAD: BÚSQUEDA Y REGISTRO RÁPIDO ==========
+
+function handleQuickSearch(query) {
+    const resultsContainer = document.getElementById('quick-search-results');
+    const tbody = document.getElementById('quick-search-body');
+    
+    if (!query || query.length < 3) {
+        resultsContainer.style.display = 'none';
+        return;
+    }
+
+    const filtered = allStudents.filter(s => 
+        s.nombre.toLowerCase().includes(query.toLowerCase()) || 
+        s.run.toLowerCase().includes(query.toLowerCase())
+    );
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">No se encontraron alumnos</td></tr>';
+    } else {
+        let html = '';
+        filtered.forEach(s => {
+            const hStatus = s.hasHuella;
+            const statusLabel = hStatus ? '<span class="status-huella-ok">✅ Registrada</span>' : '<span class="status-huella-pending">❌ Pendiente</span>';
+            const actionBtn = hStatus ? 
+                `<button class="btn-action" onclick="openStudentStats('${s.run}')">📂 Ver</button>` :
+                `<button class="btn-action" style="background-color: var(--primary-color); color: white;" onclick="handleCaptureHuellaSeparate('${s.run}')">👆 Registrar Huella</button>`;
+            
+            html += `
+                <tr>
+                    <td>${s.run}</td>
+                    <td>${s.nombre.toUpperCase()}</td>
+                    <td>${formatCourseLabel(s.curso, s.letra)}</td>
+                    <td>${statusLabel}</td>
+                    <td>${actionBtn}</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+    resultsContainer.style.display = 'block';
+}
+
+async function handleCaptureHuellaSeparate(run) {
+    if (!sensorAvailable) {
+        alert('⚠️ El sensor de huellas no está disponible. Verifique la conexión USB.');
+        return;
+    }
+
+    const student = allStudents.find(s => s.run === run);
+    if (!student) return;
+
+    if (!confirm(`¿Desea capturar la huella para ${student.nombre}?\n\nPida al alumno que coloque su dedo en el sensor cuando presione OK.`)) {
+        return;
+    }
+
+    try {
+        console.log(`Pidiendo huella para: ${run}`);
+        const response = await fetch(`/api/students/${run}/huella`, { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`✅ Huella de ${student.nombre} registrada correctamente.`);
+            
+            // Actualizar estado local
+            student.hasHuella = true;
+            
+            // Si el modal de stats está abierto, actualizarlo
+            if (currentStudent && currentStudent.run === run) {
+                openStudentStats(run);
+            }
+            
+            // Refrescar tablas y búsqueda
+            fetchStudents();
+            const qInput = document.getElementById('quick-search-input');
+            if (qInput) handleQuickSearch(qInput.value);
+        } else {
+            alert(`❌ Error: ${result.message || 'No se pudo capturar la huella'}`);
+        }
+    } catch (err) {
+        console.error("Error capturando huella:", err);
+        alert('❌ Error de conexión al capturar huella.');
+    }
+}
+
 
 // Cerrar modales al hacer clic fuera de ellos
 window.onclick = function (event) {

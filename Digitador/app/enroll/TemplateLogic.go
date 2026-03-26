@@ -30,7 +30,7 @@ func VerificarDuplicidad(sensorAdapter *sensor.SensorAdapter, tplCapturado []byt
 		}
 
 		//hay huellas identicas?
-		if score >= db.MatchTreshold {
+		if score >= db.MatchThreshold {
 			//si, devolvemos error de huella duplicada
 			f.Fprintf(os.Stderr, "(-) ERROR: La huella esta registrada dentro del sistema\n")
 			nombreAlumno := "Desconocido"

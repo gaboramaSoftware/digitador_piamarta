@@ -2,7 +2,7 @@
 
 #include "Sensor.h"
 #include "include/libzkfp.h"
-#include "include/libzkfperrdef.h"
+#include "include/libzkfperrdef.h" //I want to export ZKFPM_DBIdentify
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -127,6 +127,67 @@ bool Sensor::closeSensor() {
   ZKFPM_Terminate();
 
   m_isInitialized = false;
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+// Agregar template a la DB en memoria
+// -----------------------------------------------------------------------------
+bool Sensor::DBAdd(const std::vector<unsigned char> &templateData,
+                             int userId) {
+  if (!m_isInitialized || !m_dbCacheHandle) {
+    std::cerr << "(-) Sensor no inicializado o DB inválida." << std::endl;
+    return false;
+  }
+
+  if (templateData.empty()) {
+    std::cerr << "(-) Template vacío." << std::endl;
+    return false;
+  }
+
+  // Agregar template a la DB en memoria
+  int ret = ZKFPM_DBAdd(m_dbCacheHandle, userId, const_cast<unsigned char*>(templateData.data()),
+                        static_cast<unsigned int>(templateData.size()));
+
+  if (ret != ZKFP_ERR_OK) {
+    std::cerr << "(-) Error al agregar template a la DB, código: " << ret
+              << std::endl;
+    return false;
+  }
+
+  std::cout << "(+) Template agregado a la DB (ID: " << userId << ")."
+            << std::endl;
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+// Identificar huella en la DB en memoria
+// -----------------------------------------------------------------------------
+bool Sensor::DBIdentify(const std::vector<unsigned char> &templateData,
+                        int &userId, int &score) {
+  if (!m_isInitialized || !m_dbCacheHandle) {
+    std::cerr << "(-) Sensor no inicializado o DB inválida." << std::endl;
+    return false;
+  }
+
+  if (templateData.empty()) {
+    std::cerr << "(-) Template vacío." << std::endl;
+    return false;
+  }
+
+  // Identificar huella en la DB en memoria
+  int ret = ZKFPM_DBIdentify(m_dbCacheHandle, const_cast<unsigned char*>(templateData.data()),
+                             static_cast<unsigned int>(templateData.size()),
+                             (unsigned int *)&userId, (unsigned int *)&score);
+
+  if (ret != ZKFP_ERR_OK) {
+    std::cerr << "(-) Error al identificar template, código: " << ret
+              << std::endl;
+    return false;
+  }
+
+  std::cout << "(+) Huella identificada en la DB (ID: " << userId
+            << ", Score: " << score << ")." << std::endl;
   return true;
 }
 

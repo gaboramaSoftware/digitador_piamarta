@@ -77,13 +77,33 @@ int MatchTemplates(SensorHandle handle, const unsigned char *tpl1, int size1,
   return score;
 }
 
-} // fin extern "C"
+// 1:N - Agregar template al cache interno
+int DBAdd(SensorHandle handle, int userId, unsigned char *fpTemplate,
+          int cbTemplate) {
+  if (!handle)
+    return 0;
+  Sensor *s = static_cast<Sensor *>(handle);
+  std::vector<unsigned char> templateData(fpTemplate, fpTemplate + cbTemplate);
+  return s->DBAdd(templateData, userId) ? 1 : 0;
+}
 
-// ESPERA ENTONCES GO USA CLASES TAMBIEN?
-// si, pero no directamente
-// EXPLICATE:
-// Go usa `structs` para los datos y les adjunta funciones llamadas "Métodos
-// Receptores". Como Go no entiende las Clases de C++ de forma directa, usamos
-// este módulo (Bride en C puro). CGO pasa el puntero de la clase a Go como un
-// simple (void*/Handle). Luego, en Go, envuelven ese puntero dentro de un
-// `struct` para que se comporte como un Objeto.
+// 1:N - Identificar huella en el cache interno
+int DBIdentify(SensorHandle handle, unsigned char *fpTemplate, int cbTemplate,
+               int *outUserId, int *outScore) {
+  if (!handle)
+    return 0;
+  Sensor *s = static_cast<Sensor *>(handle);
+  std::vector<unsigned char> templateData(fpTemplate, fpTemplate + cbTemplate);
+
+  int userId = 0;
+  int score = 0;
+  if (s->DBIdentify(templateData, userId, score)) {
+    *outUserId = userId;
+    *outScore = score;
+    return 1; // Éxito
+  }
+
+  return 0; // No encontrado o error
+}
+
+} // fin extern "C"

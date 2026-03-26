@@ -74,6 +74,13 @@ public:
   // obtener el tamaño del buffer de imagen
   size_t getImageBufferSize() const;
 
+  // obtener datos la base de datos en el sensor
+  bool DBAdd(const std::vector<unsigned char> &templateData, int userId);
+
+  // identificar huella en la base de datos en el sensor
+  bool DBIdentify(const std::vector<unsigned char> &templateData, int &userId,
+                  int &score);
+
   //====Funciones de comparacion====
 
   // comparar dos templates y retornar el score de coincidencia

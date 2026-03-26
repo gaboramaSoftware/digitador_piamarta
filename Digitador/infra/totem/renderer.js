@@ -48,7 +48,7 @@ function showScreen(screenName) {
     }
 }
 
-function autoReturnToWaiting(delayMs = 5000) {
+function autoReturnToWaiting(delayMs = 1000) {
     console.log(`[UI] Auto-retorno a waiting en ${delayMs}ms`);
     autoReturnTimeout = setTimeout(() => {
         showScreen('waiting');
@@ -73,7 +73,7 @@ function mostrarAprobado(data) {
     if (racion) racion.textContent = data?.racion || 'N/A';
 
     showScreen('approved');
-    autoReturnToWaiting(5000);
+    autoReturnToWaiting(1000); // 0.5 seconds instead of 5
 }
 
 function mostrarRechazado(razon, nombre = '') {
@@ -86,7 +86,7 @@ function mostrarRechazado(razon, nombre = '') {
     if (nombreEl) nombreEl.textContent = nombre;
 
     showScreen('rejected');
-    autoReturnToWaiting(4000);
+    autoReturnToWaiting(1000); // 1 seconds instead of 4
 }
 
 // ============================================
@@ -189,10 +189,15 @@ async function iniciarBucleHuella() {
     while (pollingActive) {
         if (currentScreen === 'waiting') {
             const resultado = await verificarHuella();
-            procesarRespuesta(resultado);
+            if (resultado && resultado.status !== 'waiting' && resultado.status !== 'sensor_unavailable') {
+                // Si hay algo que procesar (dedo detectado), mostramos el spinner inmediatamente
+                showScreen('processing');
+                procesarRespuesta(resultado);
+            }
         }
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Ultra-fast polling for instant feel
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     console.log('[POLLING] Bucle terminado');

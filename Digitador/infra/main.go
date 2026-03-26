@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	logic "Pydigitador/app/logic"
@@ -16,7 +17,16 @@ import (
 
 // limpiarPantalla limpia la consola en Windows
 func limpiarPantalla() {
-	cmd := exec.Command("cmd", "/c", "cls")
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		// En Windows, 'cls' es un comando interno de cmd.exe
+		cmd = exec.Command("cmd", "/c", "cls")
+	} else {
+		// En Linux/macOS, 'clear' es un ejecutable independiente
+		cmd = exec.Command("clear")
+	}
+
+	// Es vital conectar la salida del comando a la salida estándar actual
 	cmd.Stdout = os.Stdout
 	cmd.Run()
 }
@@ -25,6 +35,7 @@ func limpiarPantalla() {
 func pausa() {
 	fmt.Println("\nPresione 'Enter' para continuar...")
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	limpiarPantalla()
 }
 
 func Main() {
@@ -85,10 +96,12 @@ func Main() {
 
 	// inicializamos menu
 	for running {
+		limpiarPantalla()
 		presentacion()
 		fmt.Scan(&opt)
 		// consumir el \n restante del Scan
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
+		limpiarPantalla()
 
 		switch opt {
 		case 1:
@@ -114,14 +127,6 @@ func Main() {
 			pausa()
 			limpiarPantalla()
 		case 5:
-			logic.MenuRegisterRecient(dbRepo)
-			pausa()
-			limpiarPantalla()
-		case 6:
-			logic.MenuShowRecent(dbRepo)
-			pausa()
-			limpiarPantalla()
-		case 7:
 			if dbRepo.BorrarRegistro() {
 				fmt.Println("Registros de raciones eliminados correctamente.")
 			} else {
@@ -129,7 +134,7 @@ func Main() {
 			}
 			pausa()
 			limpiarPantalla()
-		case 8:
+		case 6:
 			if dbRepo.BorrarUsuario() {
 				fmt.Println("Registros de raciones eliminados correctamente.")
 			} else {
@@ -137,8 +142,36 @@ func Main() {
 			}
 			pausa()
 			limpiarPantalla()
-		case 9:
+		case 7:
 			running = false
+			limpiarPantalla()
+		case 8:
+			fmt.Print("Ingrese la ruta del archivo Excel: ")
+			reader := bufio.NewReader(os.Stdin)
+			path, _ := reader.ReadString('\n')
+			path = strings.TrimSpace(path)
+
+			err := dbRepo.SubirPlantillaExcel(path, false)
+			if err != nil {
+				if err.Error() == "CONFLICT_STUDENTS" {
+					fmt.Print("(!) Alumnos detectados. ¿Sobrescribir datos (manteniendo huellas)? (s/n): ")
+					var conf string
+					fmt.Scan(&conf)
+					if strings.ToLower(conf) == "s" {
+						err = dbRepo.SubirPlantillaExcel(path, true)
+						if err != nil {
+							fmt.Printf("(-) Error: %v\n", err)
+						} else {
+							fmt.Println("(+) Excel cargado con éxito.")
+						}
+					}
+				} else {
+					fmt.Printf("(-) Error: %v\n", err)
+				}
+			} else {
+				fmt.Println("(+) Excel cargado con éxito.")
+			}
+			pausa()
 			limpiarPantalla()
 		case 10:
 			fmt.Print("\n ADVERTENCIA: ¿está seguro de borrar TODOS los datos? (s/n): ")

@@ -67,26 +67,32 @@ func LeerNombreCompleto() (nombres, paterno, materno string) {
 	return
 }
 
-// funcion para recibir el curso del alumno
-func LeerCurso() (curso string) {
-	//le pedimos al usuario que ingrese el curso del alumno
-	f.Print("Curso (ej: 1 Basico, 2 Medio): ")
+// funcion para recibir el curso del alumno (ahora retorna ID numérico)
+func LeerCurso() (idCurso int) {
+	//le pedimos al usuario que ingrese el ID del curso
+	f.Print("ID del Curso (número): ")
 	consolaScanner.Scan()
-	//curso se encuentra vacio?
-	if strings.TrimSpace(consolaScanner.Text()) == "" {
+	input := strings.TrimSpace(consolaScanner.Text())
+	if input == "" {
 		f.Fprintln(os.Stderr, "ERROR: Curso vacio.")
-		return
+		return 0
 	}
-	//pasamos el curso a formato estandar
-	curso = formatoNombre(consolaScanner.Text())
-	//devolvemos el curso
+	_, err := f.Sscanf(input, "%d", &idCurso)
+	if err != nil {
+		f.Fprintln(os.Stderr, "ERROR: Debe ingresar un número válido para el curso.")
+		return 0
+	}
 	return
 }
 
-// funcion para recibir la letra del curso
-func LeerLetra() (letra string) {
-	f.Print("Letra/Sección (A, B, C... dejar vacío si no aplica): ")
+// funcion para recibir la letra del curso (ahora retorna ID numérico)
+func LeerLetra() (idLetra int) {
+	f.Print("ID de Letra/Sección (número, 0 si no aplica): ")
 	consolaScanner.Scan()
-	letra = strings.ToUpper(strings.TrimSpace(consolaScanner.Text()))
+	input := strings.TrimSpace(consolaScanner.Text())
+	if input == "" {
+		return 0
+	}
+	f.Sscanf(input, "%d", &idLetra)
 	return
 }
